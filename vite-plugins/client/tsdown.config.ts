@@ -6,4 +6,5 @@ export default defineConfig({
     'process.env.NODE_ENV': '"production"',
     'production': 'true',
   },
-})
+} as any)
+

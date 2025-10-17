@@ -1,13 +1,11 @@
 // vite.config.js
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { codeInspectorPlugin } from 'code-inspector-plugin';
+import { sourceInspectorPlugin } from './vite-plugins/source-inspector-plugin.ts';
 
 export default defineConfig({
   plugins: [
+    sourceInspectorPlugin(),
     react(),
-    codeInspectorPlugin({
-      bundler: 'vite',
-    }),
   ],
 });
