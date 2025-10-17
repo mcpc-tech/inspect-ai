@@ -135,7 +135,7 @@ export function sourceInspectorPlugin(): Plugin {
 
     transformIndexHtml(html) {
       // Load the compiled client script
-      const clientScriptPath = path.resolve(process.cwd(), 'vite-plugins/client/inspector.js');
+      const clientScriptPath = path.resolve(process.cwd(), 'vite-plugins/client/dist/inspector.iife.js');
       let clientScript = '';
       
       try {

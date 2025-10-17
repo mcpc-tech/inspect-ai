@@ -37,7 +37,7 @@ export const useInspectorHover = ({
         tooltipRef.current.style.display = 'block';
         tooltipRef.current.style.top = e.clientY + 10 + 'px';
         tooltipRef.current.style.left = e.clientX + 10 + 'px';
-        tooltipRef.current.textContent = '👆 Click to inspect';
+        tooltipRef.current.textContent = 'Click to inspect';
       }
     };
 

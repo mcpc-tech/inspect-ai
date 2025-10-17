@@ -26,6 +26,7 @@
   "scripts": {
     "build": "tsdown",
     "build:inspector": "cd vite-plugins/client && tsdown inspector.tsx --format iife --out-file inspector.js && mv dist/inspector.iife.js ./inspector.js",
+    "dev:inspector": "cd vite-plugins/client && tsdown inspector.tsx --format iife --out-file inspector.js --watch && mv dist/inspector.iife.js ./inspector.js",
     "dev": "tsdown --watch",
     "test": "vitest",
     "typecheck": "tsc --noEmit",

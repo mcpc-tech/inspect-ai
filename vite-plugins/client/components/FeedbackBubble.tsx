@@ -91,7 +91,7 @@ export const FeedbackBubble: React.FC<FeedbackBubbleProps> = ({
           fontSize: '13px',
         }}
       >
-        ✏️ Feedback
+        Feedback to AI
       </div>
 
       <div

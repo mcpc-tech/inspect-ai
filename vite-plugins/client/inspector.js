@@ -10051,7 +10051,7 @@ var import_react = /* @__PURE__ */ __toESM(require_react());
 						color: "#000",
 						fontSize: "13px"
 					},
-					children: "✏️ Feedback"
+					children: "feedback to AI"
 				}),
 				/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
 					style: {
