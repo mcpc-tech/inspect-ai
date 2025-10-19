@@ -1,10 +1,20 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { IncomingMessage, ServerResponse } from "http";
 import { randomUUID } from "crypto";
-import type { ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
+  McpError,
+  ErrorCode,
+  type ReadResourceResult,
+} from "@modelcontextprotocol/sdk/types.js";
 import type { Connect } from "vite";
+
+import { bindPuppet, createClientExecServer } from "@mcpc-tech/cmcp";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 
 interface SourceMetadata {
   file: string;
@@ -20,7 +30,7 @@ interface SourceMetadata {
 function createSourceInspectorMcpServer(
   sourceMapCache: Map<string, SourceMetadata>
 ) {
-  const mcpServer = new McpServer(
+  const mcpServer = new Server(
     {
       name: "source-inspector-mcp-server",
       version: "1.0.0",
@@ -33,52 +43,81 @@ function createSourceInspectorMcpServer(
     }
   );
 
-  // Tool: Test ping
-  mcpServer.tool(
-    "ping",
-    "Simple test tool that returns pong with cache info",
-    {},
-    async () => {
+  // List tools handler
+  mcpServer.setRequestHandler(ListToolsRequestSchema, () => {
+    return {
+      tools: [
+        {
+          name: "ping",
+          description: "Simple test tool that returns pong with cache info",
+          inputSchema: {
+            type: "object",
+            properties: {},
+          },
+        },
+      ],
+    };
+  });
+
+  // Call tool handler
+  mcpServer.setRequestHandler(CallToolRequestSchema, (request, _extra) => {
+    if (request.params.name === "ping") {
       return {
         content: [
           {
             type: "text",
-            text: JSON.stringify({
-              message: "pong",
-              cacheSize: sourceMapCache.size,
-              components: Array.from(sourceMapCache.keys()),
-              timestamp: new Date().toISOString(),
-            }, null, 2),
+            text: JSON.stringify(
+              {
+                message: "pong",
+                cacheSize: sourceMapCache.size,
+                components: Array.from(sourceMapCache.keys()),
+                timestamp: new Date().toISOString(),
+              },
+              null,
+              2
+            ),
           },
         ],
       };
     }
-  );
+    throw new McpError(ErrorCode.InvalidRequest, "Tool not found");
+  });
 
-  // Resource: Source map data - the only thing we need
-  mcpServer.resource(
-    "source-map",
-    "inspector://source-map",
-    {
-      name: "Source Map",
-      description: "Complete source map cache data",
-      mimeType: "application/json",
-    },
-    async (): Promise<ReadResourceResult> => {
-      const sourceMapData: Record<string, SourceMetadata> = {};
-      for (const [key, value] of sourceMapCache.entries()) {
-        sourceMapData[key] = value;
+  // List resources handler
+  mcpServer.setRequestHandler(ListResourcesRequestSchema, () => {
+    return {
+      resources: [
+        {
+          uri: "inspector://source-map",
+          name: "Source Map",
+          description: "Complete source map cache data",
+          mimeType: "application/json",
+        },
+      ],
+    };
+  });
+
+  // Read resource handler
+  mcpServer.setRequestHandler(
+    ReadResourceRequestSchema,
+    (request, _extra): ReadResourceResult => {
+      if (request.params.uri === "inspector://source-map") {
+        const sourceMapData: Record<string, SourceMetadata> = {};
+        for (const [key, value] of sourceMapCache.entries()) {
+          sourceMapData[key] = value;
+        }
+
+        return {
+          contents: [
+            {
+              uri: "inspector://source-map",
+              mimeType: "application/json",
+              text: JSON.stringify(sourceMapData, null, 2),
+            },
+          ],
+        };
       }
-
-      return {
-        contents: [
-          {
-            uri: "inspector://source-map",
-            mimeType: "application/json",
-            text: JSON.stringify(sourceMapData, null, 2),
-          },
-        ],
-      };
+      throw new McpError(ErrorCode.InvalidRequest, "Resource not found");
     }
   );
 
@@ -130,7 +169,7 @@ export function setupMcpServer(
       }
 
       // SSE endpoint (deprecated, for backwards compatibility)
-      if (url === "/__mcp__/sse" && req.method === "GET") {
+      if (url.startsWith("/__mcp__/sse") && req.method === "GET") {
         await handleSseConnection(req, res, sourceMapCache, transports);
         return;
       }
@@ -152,7 +191,7 @@ export function setupMcpServer(
 async function handleStreamableHttpPost(
   req: IncomingMessage,
   res: ServerResponse,
-  mcpServer: McpServer,
+  mcpServer: Server,
   transports: Record<string, StreamableHTTPServerTransport | SSEServerTransport>
 ) {
   try {
@@ -287,16 +326,25 @@ async function handleSseConnection(
   transports: Record<string, StreamableHTTPServerTransport | SSEServerTransport>
 ) {
   try {
+    const url = new URL(req.url ?? "", `http://${req.headers.host}`);
     const transport = new SSEServerTransport("/__mcp__/messages", res);
     const sessionId = transport.sessionId;
+    const aliasSessionId = url.searchParams.get("sessionId") || sessionId;
+    const puppetId = url.searchParams.get("puppetId");
 
+    const puppetTransport = bindPuppet(
+      transport,
+      puppetId ? transports[puppetId] : null
+    );
+
+    transports[aliasSessionId] = puppetTransport;
     transports[sessionId] = transport;
 
     transport.onclose = () => {
       delete transports[sessionId];
     };
 
-    const server = createSourceInspectorMcpServer(sourceMapCache);
+    const server = createClientExecServer(createSourceInspectorMcpServer(sourceMapCache), 'source-inspector-controller');
     await server.connect(transport);
   } catch (error) {
     console.error("Error establishing SSE connection:", error);

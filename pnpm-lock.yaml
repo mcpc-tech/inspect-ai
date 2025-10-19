@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@mcpc-tech/cmcp':
-        specifier: ^0.0.5
-        version: 0.0.5
+        specifier: ^0.0.8
+        version: 0.0.8
       '@modelcontextprotocol/sdk':
         specifier: ^1.20.1
         version: 1.20.1
@@ -359,8 +359,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@mcpc-tech/cmcp@0.0.5':
-    resolution: {integrity: sha512-5tJ7x8Th8nm5GVXdwLJ30u6EsuizlDlcJX6AcQ9jn+OlshF+jLOIzf2grXC3IPblQs/57roaHCOQDKP3Et2WuQ==}
+  '@mcpc-tech/cmcp@0.0.8':
+    resolution: {integrity: sha512-yMq+l1xyZ8tU4RDwNILvqspgyfJsLs1ASll6l6GYyNPO7Jt2vDOAyz3AyIRXcGxG6/DT56sF49VzGv/qLUofmA==}
 
   '@modelcontextprotocol/sdk@1.20.1':
     resolution: {integrity: sha512-j/P+yuxXfgxb+mW7OEoRCM3G47zCTDqUPivJo/VzpjbG8I9csTXtOprCf5FfOfHK4whOJny0aHuBEON+kS7CCA==}
@@ -2001,7 +2001,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@mcpc-tech/cmcp@0.0.5':
+  '@mcpc-tech/cmcp@0.0.8':
     dependencies:
       '@modelcontextprotocol/sdk': 1.20.1
       zod: 3.25.76

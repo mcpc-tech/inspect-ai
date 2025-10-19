@@ -76,6 +76,8 @@ const InspectorContainer: React.FC = () => {
   };
 
   const handleFeedbackClose = () => {
+    const wasPending = isWaitingForFeedback;
+    
     setShowBubble(false);
     setIsWaitingForFeedback(false);
     setIsActive(false);
@@ -85,6 +87,10 @@ const InspectorContainer: React.FC = () => {
     document.body.style.cursor = '';
     if (overlayRef.current) overlayRef.current.style.display = 'none';
     if (tooltipRef.current) tooltipRef.current.style.display = 'none';
+
+    if (wasPending) {
+      window.dispatchEvent(new CustomEvent('inspector-cancelled'));
+    }
   };
 
   return (
