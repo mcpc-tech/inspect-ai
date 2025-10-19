@@ -1,6 +1,8 @@
 import type { Plugin } from 'vite';
 import fs from 'fs';
 import path from 'path';
+import { setupMcpServer } from './mcp-server.js';
+import { setupInspectorMiddleware } from './inspector-middleware.js';
 
 interface SourceMetadata {
   file: string;
@@ -97,7 +99,7 @@ export function sourceInspectorPlugin(): Plugin {
         line,
         column,
       });
-
+      
       let transformedCode = code;
 
       const metadata = {
@@ -134,26 +136,30 @@ export function sourceInspectorPlugin(): Plugin {
     },
 
     transformIndexHtml(html) {
-      // Load the compiled client script
+      // Check if the inspector script exists
       const clientScriptPath = path.resolve(process.cwd(), 'vite-plugins/client/dist/inspector.iife.js');
-      let clientScript = '';
       
       try {
-        clientScript = fs.readFileSync(clientScriptPath, 'utf-8');
+        fs.accessSync(clientScriptPath);
       } catch {
         console.warn('⚠️  Inspector client script not found. Run `pnpm build:inspector` first.');
         return html;
       }
 
+      // Inject script tag that loads the inspector as a separate file
       return html.replace(
         '</body>',
-        `<script>${clientScript}</script></body>`
+        `<script src="/__inspector__/inspector.iife.js"></script></body>`
       );
     },
 
     configureServer(server) {
       console.log('\n✨ Source Inspector Plugin enabled!');
       console.log('👁️  Click the floating eye icon to inspect elements\n');
+      console.log(`sourceMapCache initialized with ${sourceMapCache?.size} entries.`, sourceMapCache);
+      
+      setupMcpServer(sourceMapCache, server.middlewares);
+      setupInspectorMiddleware(server.middlewares);
     },
 
     handleHotUpdate({ file }) {

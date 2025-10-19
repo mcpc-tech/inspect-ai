@@ -9,8 +9,10 @@ import { Overlay, Tooltip } from './components/Overlays';
 import { useNotification } from './hooks/useNotification';
 import { useInspectorHover } from './hooks/useInspectorHover';
 import { useInspectorClick } from './hooks/useInspectorClick';
+import { useMcp } from './hooks/useMcp';
 
 const InspectorContainer: React.FC = () => {
+  useMcp();
   const [isActive, setIsActive] = useState(false);
   const [showBubble, setShowBubble] = useState(false);
   const [isWaitingForFeedback, setIsWaitingForFeedback] = useState(false);

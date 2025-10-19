@@ -19,7 +19,7 @@ import {
 } from './interceptor';
 
 // 初始化拦截器
-initInterceptors();
+// initInterceptors();
 
 const POLL_MS = 1500;
 
