@@ -53,6 +53,22 @@ function formatResult(sourceInfo: any, feedback: string) {
   };
 }
 
+function reportFeedbackResult(args: any) {
+  const { status, result, feedback } = args;
+  
+  const event = new CustomEvent('feedback-result-received', {
+    detail: { status, result, feedback, timestamp: new Date().toISOString() }
+  });
+  window.dispatchEvent(event);
+
+  return {
+    content: [{
+      type: "text",
+      text: JSON.stringify({ success: true, message: "Result reported" }, null, 2)
+    }]
+  };
+}
+
 export function useMcp() {
   const clientRef = useRef<Client | null>(null);
 
@@ -68,11 +84,17 @@ export function useMcp() {
     );
 
     function handleElementInspected(event: CustomEvent) {
-      if (!pendingResolve) return;
+      console.log('📨 Element inspected event received', event.detail);
+      
+      if (!pendingResolve) {
+        console.warn('⚠️ No pending MCP request - feedback ignored');
+        return;
+      }
 
       const { sourceInfo, feedback } = event.detail;
       const result = formatResult(sourceInfo, feedback);
       
+      console.log('✅ Resolving MCP request with:', result);
       pendingResolve(result);
       clearPendingRequest();
     }
@@ -112,21 +134,53 @@ export function useMcp() {
     window.addEventListener('element-inspected', handleElementInspected as EventListener);
     window.addEventListener('inspector-cancelled', handleInspectorCancelled as EventListener);
 
-    client.registerTools([{
-      name: "inspect_element",
-      description: "Activate the element inspector and wait for user to select and submit an element. Returns source location, component info, APIs used, and user feedback.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          prompt: {
-            type: "string",
-            description: "Optional prompt to guide user selection",
-            default: "Please select an element on the page"
+    client.registerTools([
+      {
+        name: "inspect_element",
+        description: "Activate the element inspector and wait for user to select and submit an element. Returns source location, component info, APIs used, and user feedback.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            prompt: {
+              type: "string",
+              description: "Optional prompt to guide user selection",
+              default: "Please select an element on the page"
+            }
           }
-        }
+        },
+        implementation: inspectElement
       },
-      implementation: inspectElement
-    }]);
+      {
+        name: "report_feedback_result",
+        description: "Report the result of processing user feedback. Called by AI after analyzing feedback.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            status: {
+              type: "string",
+              enum: ["success", "error", "partial"],
+              description: "Result status"
+            },
+            result: {
+              type: "object",
+              description: "Processing result data",
+              properties: {
+                message: { type: "string" },
+                file: { type: "string" },
+                component: { type: "string" },
+                changes: { type: "array", items: { type: "string" } }
+              }
+            },
+            feedback: {
+              type: "string",
+              description: "Original user feedback"
+            }
+          },
+          required: ["status", "result"]
+        },
+        implementation: reportFeedbackResult
+      }
+    ]);
 
     const transport = new SSEClientTransport(
       new URL("/__mcp__/sse?sessionId=chrome", window.location.origin)

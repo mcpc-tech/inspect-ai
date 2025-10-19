@@ -1,7 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import type { InspectedElement } from './types';
-import { createStyles } from './styles';
 import { Notification } from './components/Notification';
 import { FeedbackBubble } from './components/FeedbackBubble';
 import { InspectorButton } from './components/InspectorButton';
@@ -10,14 +9,15 @@ import { useNotification } from './hooks/useNotification';
 import { useInspectorHover } from './hooks/useInspectorHover';
 import { useInspectorClick } from './hooks/useInspectorClick';
 import { useMcp } from './hooks/useMcp';
+import { ThemeProvider } from 'next-themes';
+import { Toaster } from './components/ui/sonner';
 
 const InspectorContainer: React.FC = () => {
   useMcp();
   const [isActive, setIsActive] = useState(false);
-  const [showBubble, setShowBubble] = useState(false);
-  const [isWaitingForFeedback, setIsWaitingForFeedback] = useState(false);
   const [sourceInfo, setSourceInfo] = useState<InspectedElement | null>(null);
-  const [inspectedElement, setInspectedElement] = useState<Element | null>(null);
+  const [bubbleMode, setBubbleMode] = useState<'input' | 'loading' | 'success' | 'error' | null>(null);
+  const [resultMessage, setResultMessage] = useState<string>('');
 
   const btnRef = useRef<HTMLButtonElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -25,9 +25,26 @@ const InspectorContainer: React.FC = () => {
 
   const { notification, showNotif } = useNotification();
 
+  useEffect(() => {
+    const handleResultReceived = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { status, result } = customEvent.detail;
+      
+      setBubbleMode(status === 'success' ? 'success' : 'error');
+      setResultMessage(result.message || '处理完成');
+      
+      showNotif(status === 'success' ? '✅ AI 处理完成' : '⚠️ AI 处理失败');
+    };
+
+    window.addEventListener('feedback-result-received', handleResultReceived as EventListener);
+    return () => {
+      window.removeEventListener('feedback-result-received', handleResultReceived as EventListener);
+    };
+  }, [showNotif]);
+
   useInspectorHover({
     isActive,
-    isWaitingForFeedback,
+    isWaitingForFeedback: bubbleMode !== null,
     overlayRef,
     tooltipRef,
     btnRef,
@@ -35,12 +52,10 @@ const InspectorContainer: React.FC = () => {
 
   useInspectorClick({
     isActive,
-    isWaitingForFeedback,
-    onElementInspected: (info, element) => {
+    isWaitingForFeedback: bubbleMode !== null,
+    onElementInspected: (info) => {
       setSourceInfo(info);
-      setInspectedElement(element);
-      setShowBubble(true);
-      setIsWaitingForFeedback(true);
+      setBubbleMode('input');
 
       if (overlayRef.current) overlayRef.current.style.display = 'none';
       if (tooltipRef.current) tooltipRef.current.style.display = 'none';
@@ -66,20 +81,19 @@ const InspectorContainer: React.FC = () => {
   };
 
   const handleFeedbackSubmit = (feedback: string) => {
+    console.log('📤 Feedback submitted:', feedback);
     if (sourceInfo) {
+      setBubbleMode('loading');
       const event = new CustomEvent('element-inspected', {
         detail: { sourceInfo, feedback },
       });
+      console.log('🔔 Dispatching element-inspected event');
       window.dispatchEvent(event);
     }
-    handleFeedbackClose();
   };
 
-  const handleFeedbackClose = () => {
-    const wasPending = isWaitingForFeedback;
-    
-    setShowBubble(false);
-    setIsWaitingForFeedback(false);
+  const handleBubbleClose = () => {
+    setBubbleMode(null);
     setIsActive(false);
     if (btnRef.current) {
       btnRef.current.classList.remove('active');
@@ -88,27 +102,28 @@ const InspectorContainer: React.FC = () => {
     if (overlayRef.current) overlayRef.current.style.display = 'none';
     if (tooltipRef.current) tooltipRef.current.style.display = 'none';
 
-    if (wasPending) {
-      window.dispatchEvent(new CustomEvent('inspector-cancelled'));
-    }
+    window.dispatchEvent(new CustomEvent('inspector-cancelled'));
   };
 
   return (
     <>
       <InspectorButton ref={btnRef} isActive={isActive} onClick={toggleInspector} />
-      <Overlay ref={overlayRef} visible={isActive && !isWaitingForFeedback} />
-      <Tooltip ref={tooltipRef} visible={isActive && !isWaitingForFeedback} />
+      <Overlay ref={overlayRef} visible={isActive && bubbleMode === null} />
+      <Tooltip ref={tooltipRef} visible={isActive && bubbleMode === null} />
 
       {notification && <Notification message={notification} />}
 
-      {showBubble && sourceInfo && inspectedElement && (
+      {bubbleMode && sourceInfo && (
         <FeedbackBubble
           sourceInfo={sourceInfo}
-          element={inspectedElement}
+          mode={bubbleMode}
           onSubmit={handleFeedbackSubmit}
-          onClose={handleFeedbackClose}
+          onClose={handleBubbleClose}
+          resultMessage={resultMessage}
         />
       )}
+      
+      <Toaster />
     </>
   );
 };
@@ -123,12 +138,14 @@ export function initInspector(): void {
   root.id = 'source-inspector-root';
   document.body.appendChild(root);
 
-  const styles = document.createElement('style');
-  styles.textContent = createStyles();
-  document.head.appendChild(styles);
-
   const reactRoot = ReactDOM.createRoot(root);
-  reactRoot.render(React.createElement(InspectorContainer));
+  reactRoot.render(
+    React.createElement(ThemeProvider, { 
+      attribute: 'class',
+      defaultTheme: 'light',
+      enableSystem: false,
+    }, React.createElement(InspectorContainer))
+  );
 }
 
 if (typeof document !== 'undefined') {
