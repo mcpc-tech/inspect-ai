@@ -294,7 +294,7 @@ async function handleSseConnection(
 
     const runningHostTransport = Object.values(transports).find(
       // @ts-expect-error -
-      (t) => t.__puppetId === sessionId || t.__puppetId === aliasSessionId
+      (t) => t.__puppetId === aliasSessionId
     );
     // Reconnect puppet transport if found
     if (runningHostTransport) {
