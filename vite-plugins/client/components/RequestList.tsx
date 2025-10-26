@@ -1,5 +1,5 @@
 // RequestList - no default React import needed
-import type { EnhancedNetworkRequest } from '../interceptor';
+import type { EnhancedNetworkRequest } from '../types';
 
 export default function RequestList({ 
   requests, 

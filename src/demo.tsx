@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
+import { ThemeProvider } from 'next-themes';
 import './index.css';
 import Stats from './components/Stats';
 import RequestList from './components/RequestList';
@@ -18,7 +19,7 @@ import {
   type EnhancedNetworkRequest 
 } from './interceptor';
 
-// 初始化拦截器
+// Initialize interceptors
 // initInterceptors();
 
 const POLL_MS = 1500;
@@ -47,7 +48,7 @@ export default function App() {
       const other = total - fetch - xhr;
       setStats({ total, fetch, xhr, other });
       
-      // 获取增强的请求列表
+      // Get enhanced request list
       const enhancedReqs = getEnhancedRequests();
       setRequests(enhancedReqs);
     } catch (err) {
@@ -66,14 +67,14 @@ export default function App() {
     if (!url.trim()) return showToast('Please enter a URL', 'error');
     
     try {
-      // 发起实际请求，会被拦截器自动捕获
+      // Make actual request, will be automatically captured by interceptor
       const response = await fetch(url);
       await response.json();
       
-      // 等待一小段时间让拦截器处理完成
+      // Wait a moment for interceptor to finish processing
       setTimeout(() => {
         refresh();
-        // 查找刚发起的请求
+        // Find the request just made
         const reqs = getEnhancedRequests();
         const found = reqs.find(r => r.url === url);
         if (found) {
@@ -103,13 +104,13 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8 font-sans">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-8 font-sans">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <div className="max-w-6xl mx-auto">
         <header className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">🔍 Inspect API</h1>
-          <p className="text-gray-600 mt-1">Live network inspection (auto-refresh)</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">🔍 Inspect API</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Live network inspection (auto-refresh)</p>
         </header>
 
         <section className="mb-6">
@@ -118,31 +119,31 @@ export default function App() {
 
         <section className="mb-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5">
-              <h2 className="font-semibold text-gray-900 mb-3">Requests (live) - Click to view details</h2>
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm p-5">
+              <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Requests (live) - Click to view details</h2>
               <RequestList requests={requests} onSelect={handleSelectRequest} />
             </div>
           </div>
 
           <aside className="">
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5 mb-4">
-              <h3 className="font-medium text-gray-900 mb-3">Test Request</h3>
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm p-5 mb-4">
+              <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Test Request</h3>
               <GetRequest value={url} onChange={setUrl} onGet={handleGet} />
             </div>
 
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5 mb-4">
-              <h3 className="font-medium text-gray-900 mb-3">Request Details</h3>
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm p-5 mb-4">
+              <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Request Details</h3>
               <RequestDetail request={selectedRequest} />
             </div>
 
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5">
-              <h3 className="font-medium text-gray-900 mb-3">Actions</h3>
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm p-5">
+              <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Actions</h3>
               <Controls onClear={handleClear} />
             </div>
           </aside>
         </section>
 
-        <section className="text-sm text-gray-500">Last refreshed every {POLL_MS / 1000}s (auto)</section>
+        <section className="text-sm text-gray-500 dark:text-gray-400">Last refreshed every {POLL_MS / 1000}s (auto)</section>
       </div>
     </div>
   );
@@ -150,4 +151,8 @@ export default function App() {
 
 // Mount
 const root = createRoot(document.getElementById('root')!);
-root.render(<App />);
+root.render(
+  <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <App />
+  </ThemeProvider>
+);

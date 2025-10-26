@@ -11,6 +11,8 @@ import {
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { PlanProgress } from './PlanProgress';
+import { usePlanProgress } from '../hooks/usePlanProgress';
 
 interface FeedbackBubbleProps {
   sourceInfo: InspectedElement;
@@ -27,6 +29,7 @@ export const FeedbackBubble: React.FC<FeedbackBubbleProps> = ({
   onSubmit,
   resultMessage,
 }) => {
+  const plan = usePlanProgress();
   const [feedback, setFeedback] = useState('');
   const [open, setOpen] = useState(true);
 
@@ -48,17 +51,21 @@ export const FeedbackBubble: React.FC<FeedbackBubbleProps> = ({
     }
   };
 
+  const isAllPlanCompleted = plan && plan.steps.every((s) => s.status === 'completed');
+
   const getTitle = () => {
     if (mode === 'success') return 'Processing Successful';
     if (mode === 'error') return 'Processing Failed';
+    if (mode === 'loading' && isAllPlanCompleted) return 'Processing Successful';
     if (mode === 'loading') return 'Processing...';
     return 'Feedback to AI';
   };
 
   const getIcon = () => {
-    if (mode === 'success') return <CheckCircle2 className="h-5 w-5 text-green-600" />;
-    if (mode === 'error') return <XCircle className="h-5 w-5 text-red-600" />;
-    if (mode === 'loading') return <Loader2 className="h-5 w-5 animate-spin text-blue-600" />;
+    if (mode === 'success') return <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-500" />;
+    if (mode === 'error') return <XCircle className="h-5 w-5 text-red-600 dark:text-red-500" />;
+    if (mode === 'loading' && isAllPlanCompleted) return <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-500" />;
+    if (mode === 'loading') return <Loader2 className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-500" />;
     return null;
   };
 
@@ -81,21 +88,24 @@ export const FeedbackBubble: React.FC<FeedbackBubbleProps> = ({
               autoFocus
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="请输入修改诉求..."
+                onKeyPress={handleKeyPress}
+                placeholder="Enter your feedback..."
             />
           </div>
         )}
 
         {mode === 'loading' && (
-          <div className="py-8 text-center text-sm text-gray-500">
-            AI 正在处理...
+          <div className="space-y-4">
+            {plan && <PlanProgress plan={plan} />}
           </div>
         )}
 
         {(mode === 'success' || mode === 'error') && (
-          <div className="py-4 text-sm text-gray-700">
-            {resultMessage}
+          <div className="space-y-4">
+            <div className="py-4 text-sm text-gray-700 dark:text-gray-300">
+              {resultMessage}
+            </div>
+            {plan && <PlanProgress plan={plan} />}
           </div>
         )}
 
@@ -103,16 +113,16 @@ export const FeedbackBubble: React.FC<FeedbackBubbleProps> = ({
           {mode === 'input' && (
             <>
               <Button variant="outline" onClick={() => setOpen(false)}>
-                取消
+                Cancel
               </Button>
               <Button onClick={handleSubmit} disabled={!feedback.trim()}>
-                提交
+                Submit
               </Button>
             </>
           )}
           {(mode === 'success' || mode === 'error') && (
             <Button onClick={() => setOpen(false)} className="w-full">
-              关闭
+              Close
             </Button>
           )}
         </DialogFooter>

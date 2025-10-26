@@ -3,8 +3,8 @@ import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { useEffect, useRef } from "react";
 import { createClientExecClient } from "@mcpc-tech/cmcp";
 
-const INSPECTOR_BUTTON_ID = 'source-inspector-btn';
-const TIMEOUT_MS = 30000;
+const INSPECTOR_BUTTON_ID = "source-inspector-btn";
+const TIMEOUT_MS = 600_000;
 
 let pendingResolve: ((value: any) => void) | null = null;
 let pendingReject: ((reason: any) => void) | null = null;
@@ -23,13 +23,15 @@ function clearPendingRequest() {
 }
 
 function activateInspector() {
-  const button = document.getElementById(INSPECTOR_BUTTON_ID) as HTMLButtonElement;
-  
+  const button = document.getElementById(
+    INSPECTOR_BUTTON_ID
+  ) as HTMLButtonElement;
+
   if (!button) {
     return { error: "Inspector button not found" };
   }
 
-  if (!button.classList.contains('active')) {
+  if (!button.classList.contains("active")) {
     button.click();
   }
 
@@ -38,34 +40,53 @@ function activateInspector() {
 
 function formatResult(sourceInfo: any, feedback: string) {
   return {
-    content: [{
-      type: "text",
-      text: JSON.stringify({
-        file: sourceInfo.file,
-        component: sourceInfo.component,
-        apis: sourceInfo.apis,
-        line: sourceInfo.line,
-        column: sourceInfo.column,
-        feedback,
-        timestamp: new Date().toISOString()
-      }, null, 2)
-    }]
+    content: [
+      {
+        type: "text",
+        text: `Source: ${sourceInfo.file} (${sourceInfo.line}:${sourceInfo.column})
+Feedback: ${feedback}
+
+You must create a step-by-step plan and use the "report_plan_progress" tool to report progress for each step. When all steps are completed, you MUST provide the "result" field in the final report_plan_progress call.`,
+      },
+    ],
   };
 }
 
-function reportFeedbackResult(args: any) {
-  const { status, result, feedback } = args;
+function report_plan_progress(args: any) {
+  const { plan, result } = args;
+
+  console.log("📋 report_plan_progress called with plan:", plan);
+
+  window.dispatchEvent(
+    new CustomEvent("plan-progress-reported", {
+      detail: { plan, result, timestamp: new Date().toISOString() },
+    })
+  );
+
+  const completed = plan.steps.filter((s: any) => s.status === "completed").length;
+  const total = plan.steps.length;
+  const isAllCompleted = completed === total;
   
-  const event = new CustomEvent('feedback-result-received', {
-    detail: { status, result, feedback, timestamp: new Date().toISOString() }
-  });
-  window.dispatchEvent(event);
+  console.log(`✅ Plan progress: ${completed}/${total} steps completed`);
+
+  const responseData: any = { 
+    success: true,
+    completed,
+    total,
+  };
+
+  if (isAllCompleted && result) {
+    responseData.result = result;
+    console.log("🎉 All tasks completed with result:", result);
+  }
 
   return {
-    content: [{
-      type: "text",
-      text: JSON.stringify({ success: true, message: "Result reported" }, null, 2)
-    }]
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify(responseData, null, 2),
+      },
+    ],
   };
 }
 
@@ -79,22 +100,22 @@ export function useMcp() {
       new Client(
         { name: "use-mcp-react-client", version: "0.1.0" },
         { capabilities: { tools: {} } }
-      ), 
-      'use-mcp-react-client'
+      ),
+      "use-mcp-react-client"
     );
 
     function handleElementInspected(event: CustomEvent) {
-      console.log('📨 Element inspected event received', event.detail);
-      
+      console.log("📨 Element inspected event received", event.detail);
+
       if (!pendingResolve) {
-        console.warn('⚠️ No pending MCP request - feedback ignored');
+        console.warn("⚠️ No pending MCP request - feedback ignored");
         return;
       }
 
       const { sourceInfo, feedback } = event.detail;
       const result = formatResult(sourceInfo, feedback);
-      
-      console.log('✅ Resolving MCP request with:', result);
+
+      console.log("✅ Resolving MCP request with:", result);
       pendingResolve(result);
       clearPendingRequest();
     }
@@ -105,14 +126,14 @@ export function useMcp() {
 
     async function inspectElement(args: any) {
       const prompt = args.prompt || "Please select an element on the page";
-      
+
       cancelPendingRequest("New inspect request started");
 
       const activation = activateInspector();
       if (activation.error) {
         return {
           content: [{ type: "text", text: `Error: ${activation.error}` }],
-          isError: true
+          isError: true,
         };
       }
 
@@ -131,71 +152,92 @@ export function useMcp() {
       });
     }
 
-    window.addEventListener('element-inspected', handleElementInspected as EventListener);
-    window.addEventListener('inspector-cancelled', handleInspectorCancelled as EventListener);
+    window.addEventListener(
+      "element-inspected",
+      handleElementInspected as EventListener
+    );
+    window.addEventListener(
+      "inspector-cancelled",
+      handleInspectorCancelled as EventListener
+    );
 
     client.registerTools([
       {
         name: "inspect_element",
-        description: "Activate the element inspector and wait for user to select and submit an element. Returns source location, component info, APIs used, and user feedback.",
+        description: "Activate element inspector and wait for user selection.",
         inputSchema: {
           type: "object",
           properties: {
             prompt: {
               type: "string",
-              description: "Optional prompt to guide user selection",
-              default: "Please select an element on the page"
-            }
-          }
+              description: "Prompt to guide user selection",
+              default: "Please select an element on the page",
+            },
+          },
         },
-        implementation: inspectElement
+        implementation: inspectElement,
       },
       {
-        name: "report_feedback_result",
-        description: "Report the result of processing user feedback. Called by AI after analyzing feedback.",
+        name: "report_plan_progress",
+        description: "Report plan progress with step status updates.",
         inputSchema: {
           type: "object",
           properties: {
-            status: {
-              type: "string",
-              enum: ["success", "error", "partial"],
-              description: "Result status"
+            plan: {
+              type: "object",
+              properties: {
+                steps: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "number" },
+                      title: { type: "string" },
+                      status: {
+                        type: "string",
+                        enum: ["pending", "in-progress", "completed", "failed"],
+                      },
+                    },
+                    required: ["id", "title", "status"],
+                  },
+                },
+              },
+              required: ["steps"],
             },
             result: {
-              type: "object",
-              description: "Processing result data",
-              properties: {
-                message: { type: "string" },
-                file: { type: "string" },
-                component: { type: "string" },
-                changes: { type: "array", items: { type: "string" } }
-              }
-            },
-            feedback: {
               type: "string",
-              description: "Original user feedback"
-            }
+              description: "Result summary to be included when all tasks are completed",
+            },
           },
-          required: ["status", "result"]
+          required: ["plan"],
         },
-        implementation: reportFeedbackResult
-      }
+        implementation: report_plan_progress,
+      },
     ]);
 
     const transport = new SSEClientTransport(
       new URL("/__mcp__/sse?sessionId=chrome", window.location.origin)
     );
 
-    client.connect(transport).then(() => {
-      clientRef.current = client;
-      console.log("MCP client connected");
-    }).catch((err) => {
-      console.error("MCP connection error:", err);
-    });
+    client
+      .connect(transport)
+      .then(() => {
+        clientRef.current = client;
+        console.log("MCP client connected");
+      })
+      .catch((err) => {
+        console.error("MCP connection error:", err);
+      });
 
     return () => {
-      window.removeEventListener('element-inspected', handleElementInspected as EventListener);
-      window.removeEventListener('inspector-cancelled', handleInspectorCancelled as EventListener);
+      window.removeEventListener(
+        "element-inspected",
+        handleElementInspected as EventListener
+      );
+      window.removeEventListener(
+        "inspector-cancelled",
+        handleInspectorCancelled as EventListener
+      );
       transport.close?.();
     };
   }, []);

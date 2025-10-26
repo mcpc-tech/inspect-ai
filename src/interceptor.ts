@@ -13,6 +13,8 @@ export interface EnhancedNetworkRequest {
   responseBody?: any;
   responseType?: string;
   error?: string;
+  size?: number;
+  initiator?: string;
 }
 
 const requests: EnhancedNetworkRequest[] = [];
@@ -45,7 +47,7 @@ function generateId(): string {
 }
 
 /**
- * 拦截 fetch 请求
+ * Intercept fetch requests
  */
 export function interceptFetch(): void {
   const originalFetch = window.fetch;
@@ -122,7 +124,7 @@ export function interceptFetch(): void {
 }
 
 /**
- * 拦截 XMLHttpRequest
+ * Intercept XMLHttpRequest
  */
 export function interceptXHR(): void {
   const OriginalXHR = window.XMLHttpRequest;

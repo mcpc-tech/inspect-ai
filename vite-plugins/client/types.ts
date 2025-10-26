@@ -14,3 +14,22 @@ export interface ReactFiber {
   return?: ReactFiber;
   [key: string]: any;
 }
+
+export interface EnhancedNetworkRequest {
+  id: string;
+  url: string;
+  method: string;
+  type: 'fetch' | 'xhr';
+  timestamp: number;
+  duration?: number;
+  requestHeaders: Record<string, string>;
+  requestBody?: any;
+  status?: number;
+  statusText?: string;
+  responseHeaders?: Record<string, string>;
+  responseBody?: any;
+  responseType?: string;
+  error?: string;
+  size?: number;
+  initiator?: string;
+}

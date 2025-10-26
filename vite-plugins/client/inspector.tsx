@@ -31,9 +31,9 @@ const InspectorContainer: React.FC = () => {
       const { status, result } = customEvent.detail;
       
       setBubbleMode(status === 'success' ? 'success' : 'error');
-      setResultMessage(result.message || '处理完成');
+      setResultMessage(result.message || 'Processing completed');
       
-      showNotif(status === 'success' ? '✅ AI 处理完成' : '⚠️ AI 处理失败');
+      showNotif(status === 'success' ? '✅ AI processing completed' : '⚠️ AI processing failed');
     };
 
     window.addEventListener('feedback-result-received', handleResultReceived as EventListener);
@@ -142,8 +142,8 @@ export function initInspector(): void {
   reactRoot.render(
     React.createElement(ThemeProvider, { 
       attribute: 'class',
-      defaultTheme: 'light',
-      enableSystem: false,
+      defaultTheme: 'system',
+      enableSystem: true,
     }, React.createElement(InspectorContainer))
   );
 }

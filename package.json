@@ -53,8 +53,9 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "@mcpc-tech/cmcp": "^0.0.8",
+    "@mcpc-tech/cmcp": "^0.0.9",
     "@modelcontextprotocol/sdk": "^1.20.1",
+    "@radix-ui/react-collapsible": "^1.1.12",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-slot": "^1.2.3",
     "class-variance-authority": "^0.7.1",

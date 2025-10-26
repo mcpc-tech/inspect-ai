@@ -1,4 +1,4 @@
-import type { EnhancedNetworkRequest } from '../interceptor';
+import type { EnhancedNetworkRequest } from '../types';
 
 interface RequestDetailProps {
   request: EnhancedNetworkRequest | null;
@@ -16,7 +16,7 @@ export default function RequestDetail({ request, title = 'Request Details' }: Re
 
   return (
     <div className="space-y-4 max-h-[600px] overflow-y-auto">
-      {/* URL 和基本信息 */}
+      {/* URL and basic info */}
       <div>
         <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">URL</h4>
         <div className="text-sm text-gray-900 break-all bg-gray-50 p-2 rounded border border-gray-100">
@@ -43,7 +43,7 @@ export default function RequestDetail({ request, title = 'Request Details' }: Re
         </div>
       </div>
 
-      {/* 状态 */}
+      {/* Status */}
       {request.status && (
         <div>
           <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Status</h4>
@@ -62,7 +62,7 @@ export default function RequestDetail({ request, title = 'Request Details' }: Re
         </div>
       )}
 
-      {/* 时间 */}
+      {/* Duration */}
       {request.duration !== undefined && (
         <div>
           <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Duration</h4>
@@ -72,7 +72,7 @@ export default function RequestDetail({ request, title = 'Request Details' }: Re
         </div>
       )}
 
-      {/* 请求头 */}
+      {/* Request Headers */}
       <div>
         <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Request Headers</h4>
         <div className="bg-gray-50 p-3 rounded border border-gray-100 max-h-48 overflow-auto">
@@ -91,7 +91,7 @@ export default function RequestDetail({ request, title = 'Request Details' }: Re
         </div>
       </div>
 
-      {/* 请求体 */}
+      {/* Request Body */}
       {request.requestBody && (
         <div>
           <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Request Body</h4>
@@ -103,7 +103,7 @@ export default function RequestDetail({ request, title = 'Request Details' }: Re
         </div>
       )}
 
-      {/* 响应头 */}
+      {/* Response Headers */}
       {request.responseHeaders && (
         <div>
           <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Response Headers</h4>
@@ -124,7 +124,7 @@ export default function RequestDetail({ request, title = 'Request Details' }: Re
         </div>
       )}
 
-      {/* 响应体 */}
+      {/* Response Body */}
       {request.responseBody && (
         <div>
           <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Response Body</h4>
@@ -136,7 +136,7 @@ export default function RequestDetail({ request, title = 'Request Details' }: Re
         </div>
       )}
 
-      {/* 错误信息 */}
+      {/* Error Info */}
       {request.error && (
         <div>
           <h4 className="text-xs font-semibold text-red-500 uppercase mb-2">Error</h4>

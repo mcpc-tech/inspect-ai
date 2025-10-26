@@ -43,46 +43,6 @@ function createSourceInspectorMcpServer(
     }
   );
 
-  // List tools handler
-  mcpServer.setRequestHandler(ListToolsRequestSchema, () => {
-    return {
-      tools: [
-        {
-          name: "ping",
-          description: "Simple test tool that returns pong with cache info",
-          inputSchema: {
-            type: "object",
-            properties: {},
-          },
-        },
-      ],
-    };
-  });
-
-  // Call tool handler
-  mcpServer.setRequestHandler(CallToolRequestSchema, (request, _extra) => {
-    if (request.params.name === "ping") {
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(
-              {
-                message: "pong",
-                cacheSize: sourceMapCache.size,
-                components: Array.from(sourceMapCache.keys()),
-                timestamp: new Date().toISOString(),
-              },
-              null,
-              2
-            ),
-          },
-        ],
-      };
-    }
-    throw new McpError(ErrorCode.InvalidRequest, "Tool not found");
-  });
-
   // List resources handler
   mcpServer.setRequestHandler(ListResourcesRequestSchema, () => {
     return {
@@ -332,19 +292,36 @@ async function handleSseConnection(
     const aliasSessionId = url.searchParams.get("sessionId") || sessionId;
     const puppetId = url.searchParams.get("puppetId");
 
-    const puppetTransport = bindPuppet(
-      transport,
-      puppetId ? transports[puppetId] : null
+    const runningHostTransport = Object.values(transports).find(
+      // @ts-expect-error -
+      (t) => t.__puppetId === sessionId || t.__puppetId === aliasSessionId
     );
+    // Reconnect puppet transport if found
+    if (runningHostTransport) {
+      bindPuppet(runningHostTransport, transport);
+      console.log(`Reconnected puppet transport: ${aliasSessionId}`);
+    }
+    if (puppetId) {
+      bindPuppet(transport, transports[puppetId]);
+      // @ts-expect-error -
+      transport.__puppetId = puppetId;
+    }
 
-    transports[aliasSessionId] = puppetTransport;
     transports[sessionId] = transport;
+    if (aliasSessionId) {
+      transports[aliasSessionId] = transport;
+    }
 
     transport.onclose = () => {
+      console.log(`SSE transport closed: ${aliasSessionId}`);
       delete transports[sessionId];
+      delete transports[aliasSessionId];
     };
 
-    const server = createClientExecServer(createSourceInspectorMcpServer(sourceMapCache), 'source-inspector-controller');
+    const server = createClientExecServer(
+      createSourceInspectorMcpServer(sourceMapCache),
+      "source-inspector-controller"
+    );
     await server.connect(transport);
   } catch (error) {
     console.error("Error establishing SSE connection:", error);
