@@ -20,7 +20,7 @@ import {
 } from './interceptor';
 
 // Initialize interceptors
-// initInterceptors();
+initInterceptors();
 
 const POLL_MS = 1500;
 
