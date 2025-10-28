@@ -145,6 +145,7 @@ export function initInspector(): void {
       attribute: 'class',
       defaultTheme: 'system',
       enableSystem: true,
+      storageKey: 'inspector-theme',
     }, React.createElement(InspectorContainer))
   );
 }

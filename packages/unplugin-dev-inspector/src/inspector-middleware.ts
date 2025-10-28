@@ -23,7 +23,7 @@ function getInspectorScript(): string | null {
     path.resolve(__dirname, './client/dist/inspector.iife.js'),
     path.resolve(__dirname, '../../client/dist/inspector.iife.js'),
     // Try relative to node_modules
-    path.resolve(process.cwd(), 'node_modules/unplugin-dev-inspector/client/dist/inspector.iife.js'),
+    path.resolve(process.cwd(), 'node_modules/@mcpc-tech/unplugin-dev-inspector-mcp/client/dist/inspector.iife.js'),
   ];
 
   for (const scriptPath of possiblePaths) {
@@ -51,7 +51,7 @@ function getInspectorCSS(): string | null {
     path.resolve(__dirname, '../client/dist/inspector.css'),
     path.resolve(__dirname, './client/dist/inspector.css'),
     path.resolve(__dirname, '../../client/dist/inspector.css'),
-    path.resolve(process.cwd(), 'node_modules/unplugin-dev-inspector/client/dist/inspector.css'),
+    path.resolve(process.cwd(), 'node_modules/@mcpc-tech/unplugin-dev-inspector-mcp/client/dist/inspector.css'),
   ];
 
   for (const cssPath of possiblePaths) {

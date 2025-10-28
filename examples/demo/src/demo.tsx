@@ -16,7 +16,7 @@ import {
 } from './interceptor';
 
 // Initialize interceptors using PerformanceObserver (non-invasive)
-initInterceptors();
+// initInterceptors();
 
 const POLL_MS = 1500;
 

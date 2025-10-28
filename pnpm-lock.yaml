@@ -102,6 +102,9 @@ importers:
 
   examples/demo:
     dependencies:
+      '@mcpc-tech/unplugin-dev-inspector-mcp':
+        specifier: workspace:*
+        version: link:../../packages/unplugin-dev-inspector
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -111,9 +114,6 @@ importers:
       react-dom:
         specifier: ^19.2.0
         version: 19.2.0(react@19.2.0)
-      unplugin-dev-inspector:
-        specifier: workspace:*
-        version: link:../../packages/unplugin-dev-inspector
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.1.14

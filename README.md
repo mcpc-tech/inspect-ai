@@ -1,4 +1,4 @@
-# unplugin-dev-inspector
+# @mcpc-tech/unplugin-dev-inspector-mcp
 
 Universal dev inspector plugin for React - inspect component sources and API calls in any bundler.
 
@@ -30,7 +30,7 @@ Works with Vite, Webpack, Rollup, esbuild, and Rspack.
 
 ```typescript
 // vite.config.ts
-import DevInspector from 'unplugin-dev-inspector/vite';
+import DevInspector from '@mcpc-tech/unplugin-dev-inspector-mcp/vite';
 
 export default {
   plugins: [DevInspector(), react()],

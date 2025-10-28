@@ -1,10 +1,9 @@
 {
-  "name": "unplugin-dev-inspector",
+  "name": "@mcpc-tech/unplugin-dev-inspector-mcp",
   "version": "0.0.1",
   "description": "Universal dev inspector plugin for React - inspect component sources and API calls in any bundler",
   "type": "module",
   "license": "MIT",
-  "author": "Author Name <author.name@mail.com>",
   "files": [
     "dist",
     "client/dist"
