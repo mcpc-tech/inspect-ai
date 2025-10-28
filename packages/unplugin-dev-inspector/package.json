@@ -1,6 +1,6 @@
 {
   "name": "@mcpc-tech/unplugin-dev-inspector-mcp",
-  "version": "0.0.1",
+  "version": "0.0.1-beta.1",
   "description": "Universal dev inspector plugin for React - inspect component sources and API calls in any bundler",
   "type": "module",
   "license": "MIT",
@@ -49,7 +49,8 @@
     "build:plugin": "tsdown",
     "build:client": "tsdown --config tsdown.client.config.ts",
     "dev": "tsdown --watch",
-    "dev:client": "tsdown --config tsdown.client.config.ts --watch"
+    "dev:client": "tsdown --config tsdown.client.config.ts --watch",
+    "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
     "esbuild": ">=0.17.0",
@@ -110,5 +111,8 @@
     "tailwindcss": "^4.1.14",
     "tsdown": "^0.15.6",
     "typescript": "^5.9.3"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
