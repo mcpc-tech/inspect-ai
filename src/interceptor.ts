@@ -2,10 +2,10 @@ export interface EnhancedNetworkRequest {
   id: string;
   url: string;
   method: string;
-  type: 'fetch' | 'xhr';
+  type: 'fetch' | 'xhr' | 'other';
   timestamp: number;
   duration?: number;
-  requestHeaders: Record<string, string>;
+  requestHeaders?: Record<string, string>;
   requestBody?: any;
   status?: number;
   statusText?: string;
@@ -19,6 +19,7 @@ export interface EnhancedNetworkRequest {
 
 const requests: EnhancedNetworkRequest[] = [];
 const MAX_REQUESTS = 100;
+let observer: PerformanceObserver | null = null;
 
 export function getEnhancedRequests(): EnhancedNetworkRequest[] {
   return [...requests];
@@ -35,172 +36,67 @@ function addRequest(request: EnhancedNetworkRequest): void {
   }
 }
 
-function updateRequest(id: string, updates: Partial<EnhancedNetworkRequest>): void {
-  const request = requests.find(r => r.id === id);
-  if (request) {
-    Object.assign(request, updates);
-  }
-}
-
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
-/**
- * Intercept fetch requests
- */
-export function interceptFetch(): void {
-  const originalFetch = window.fetch;
-  
-  window.fetch = async function(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-    const method = init?.method || 'GET';
-    const id = generateId();
-    const startTime = Date.now();
-    
-    const requestHeaders: Record<string, string> = {};
-    if (init?.headers) {
-      if (init.headers instanceof Headers) {
-        init.headers.forEach((value, key) => { requestHeaders[key] = value; });
-      } else if (Array.isArray(init.headers)) {
-        init.headers.forEach(([key, value]) => { requestHeaders[key] = value; });
-      } else {
-        Object.assign(requestHeaders, init.headers);
-      }
-    }
-    
-    let requestBody: any;
-    if (init?.body && typeof init.body === 'string') {
-      requestBody = init.body;
-      try { requestBody = JSON.parse(init.body); } catch {}
-    }
-    
-    addRequest({
-      id, url, method, type: 'fetch', timestamp: startTime,
-      requestHeaders, requestBody,
-    });
-    
-    try {
-      const response = await originalFetch(input, init);
-      const duration = Date.now() - startTime;
-      
-      const responseHeaders: Record<string, string> = {};
-      response.headers.forEach((value, key) => { responseHeaders[key] = value; });
-      
-      const contentType = response.headers.get('content-type') || '';
-      let responseBody: any;
-      
-      try {
-        const cloned = response.clone();
-        if (contentType.includes('application/json')) {
-          responseBody = await cloned.json();
-        } else if (contentType.includes('text/')) {
-          responseBody = await cloned.text();
-        } else {
-          responseBody = `[Binary: ${contentType}]`;
-        }
-      } catch {
-        responseBody = '[Parse failed]';
-      }
-      
-      updateRequest(id, {
-        duration,
-        status: response.status,
-        statusText: response.statusText,
-        responseHeaders,
-        responseBody,
-        responseType: contentType,
-      });
-      
-      return response;
-    } catch (error: any) {
-      updateRequest(id, {
-        duration: Date.now() - startTime,
-        error: error.message || 'Request failed',
-      });
-      throw error;
-    }
-  };
+function mapInitiatorType(type: string): 'fetch' | 'xhr' | 'other' {
+  if (type === 'fetch') return 'fetch';
+  if (type === 'xmlhttprequest') return 'xhr';
+  return 'other';
 }
 
 /**
- * Intercept XMLHttpRequest
+ * Initialize interceptors using PerformanceObserver (non-invasive)
+ * This doesn't modify native fetch/XHR methods, so it won't interfere with MCP SSE connections
  */
-export function interceptXHR(): void {
-  const OriginalXHR = window.XMLHttpRequest;
-  
-  (window as any).XMLHttpRequest = function() {
-    const xhr = new OriginalXHR();
-    const id = generateId();
-    let url = '';
-    let method = 'GET';
-    let startTime = 0;
-    const requestHeaders: Record<string, string> = {};
-    let requestBody: any;
-    
-    const originalOpen = xhr.open;
-    xhr.open = function(m: string, u: string | URL, ...args: any[]) {
-      method = m;
-      url = typeof u === 'string' ? u : u.toString();
-      return originalOpen.apply(xhr, [m, u, ...args] as any);
-    };
-    
-    const originalSetRequestHeader = xhr.setRequestHeader;
-    xhr.setRequestHeader = function(header: string, value: string) {
-      requestHeaders[header] = value;
-      return originalSetRequestHeader.apply(xhr, [header, value]);
-    };
-    
-    const originalSend = xhr.send;
-    xhr.send = function(body?: Document | XMLHttpRequestBodyInit | null) {
-      startTime = Date.now();
-      
-      if (body && typeof body === 'string') {
-        requestBody = body;
-        try { requestBody = JSON.parse(body); } catch {}
-      }
-      
-      addRequest({
-        id, url, method, type: 'xhr', timestamp: startTime,
-        requestHeaders, requestBody,
-      });
-      
-      xhr.addEventListener('loadend', () => {
-        const duration = Date.now() - startTime;
-        const responseHeaders: Record<string, string> = {};
-        
-        xhr.getAllResponseHeaders().split('\r\n').forEach(line => {
-          const [key, value] = line.split(': ');
-          if (key && value) responseHeaders[key] = value;
-        });
-        
-        let responseBody: any = xhr.responseText;
-        const contentType = xhr.getResponseHeader('content-type') || '';
-        if (contentType.includes('application/json')) {
-          try { responseBody = JSON.parse(xhr.responseText); } catch {}
-        }
-        
-        updateRequest(id, {
-          duration,
-          status: xhr.status,
-          statusText: xhr.statusText,
-          responseHeaders,
-          responseBody,
-          responseType: contentType,
-          error: xhr.status === 0 ? 'Network error' : undefined,
-        });
-      });
-      
-      return originalSend.apply(xhr, [body] as any);
-    };
-    
-    return xhr;
-  };
-  
-  (window as any).XMLHttpRequest.prototype = OriginalXHR.prototype;
-}
-
 export function initInterceptors(): void {
-  interceptFetch();
-  interceptXHR();
+  if (observer) {
+    return; // Already initialized
+  }
+
+  // Use PerformanceObserver to watch for network requests
+  observer = new PerformanceObserver((list) => {
+    const entries = list.getEntries() as PerformanceResourceTiming[];
+    
+    entries.forEach((entry) => {
+      // Only capture fetch and XHR requests
+      if (entry.initiatorType !== 'fetch' && entry.initiatorType !== 'xmlhttprequest') {
+        return;
+      }
+
+      const id = generateId();
+      const type = mapInitiatorType(entry.initiatorType);
+      
+      // Extract basic information from PerformanceResourceTiming
+      const request: EnhancedNetworkRequest = {
+        id,
+        url: entry.name,
+        method: 'GET', // Performance API doesn't provide method, assume GET
+        type,
+        timestamp: entry.startTime + performance.timeOrigin,
+        duration: entry.duration,
+        size: entry.transferSize,
+        initiator: entry.initiatorType,
+      };
+
+      // Note: Performance API doesn't provide headers, body, or status code
+      // These would require native method patching, which we're avoiding
+      
+      addRequest(request);
+    });
+  });
+
+  // Start observing resource entries
+  observer.observe({ entryTypes: ['resource'] });
+}
+
+/**
+ * Stop observing network requests
+ */
+export function stopInterceptors(): void {
+  if (observer) {
+    observer.disconnect();
+    observer = null;
+  }
 }

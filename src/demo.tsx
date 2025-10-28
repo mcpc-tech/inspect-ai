@@ -19,8 +19,8 @@ import {
   type EnhancedNetworkRequest 
 } from './interceptor';
 
-// Initialize interceptors, this messes with mcp sse connections, disable for now
-// initInterceptors();
+// Initialize interceptors using PerformanceObserver (non-invasive)
+initInterceptors();
 
 const POLL_MS = 1500;
 

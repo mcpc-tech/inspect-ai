@@ -76,7 +76,7 @@ export default function RequestDetail({ request, title = 'Request Details' }: Re
       <div>
         <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Request Headers</h4>
         <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-100 dark:border-gray-700 max-h-48 overflow-auto">
-          {Object.keys(request.requestHeaders).length > 0 ? (
+          {request.requestHeaders && Object.keys(request.requestHeaders).length > 0 ? (
             <div className="space-y-1 text-xs">
               {Object.entries(request.requestHeaders).map(([key, value]) => (
                 <div key={key} className="flex gap-2">
@@ -86,7 +86,7 @@ export default function RequestDetail({ request, title = 'Request Details' }: Re
               ))}
             </div>
           ) : (
-            <div className="text-xs text-gray-500 dark:text-gray-400">No headers</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">No headers available</div>
           )}
         </div>
       </div>
@@ -118,7 +118,7 @@ export default function RequestDetail({ request, title = 'Request Details' }: Re
                 ))}
               </div>
             ) : (
-              <div className="text-xs text-gray-500 dark:text-gray-400">No headers</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">No headers available</div>
             )}
           </div>
         </div>
