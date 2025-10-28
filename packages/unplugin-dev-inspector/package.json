@@ -48,9 +48,9 @@
   "scripts": {
     "build": "pnpm build:plugin && pnpm build:client",
     "build:plugin": "tsdown",
-    "build:client": "node build-client.mjs",
+    "build:client": "tsdown --config tsdown.client.config.ts",
     "dev": "tsdown --watch",
-    "dev:client": "node build-client.mjs"
+    "dev:client": "tsdown --config tsdown.client.config.ts --watch"
   },
   "peerDependencies": {
     "esbuild": ">=0.17.0",
