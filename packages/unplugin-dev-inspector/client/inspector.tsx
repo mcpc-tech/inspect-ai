@@ -1,3 +1,4 @@
+import './styles.css';
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import type { InspectedElement } from './types';

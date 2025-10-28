@@ -8,10 +8,6 @@ import Toast from './components/Toast';
 import GetRequest from './components/GetRequest';
 import Controls from './components/Controls';
 import RequestDetail from './components/RequestDetail';
-import {
-  clearNetworkRequests,
-  getNetworkRequestCount,
-} from './index';
 import { 
   initInterceptors, 
   getEnhancedRequests, 
@@ -42,15 +38,15 @@ export default function App() {
 
   const refresh = useCallback(() => {
     try {
-      const total = getNetworkRequestCount();
-      const fetch = getNetworkRequestCount(['fetch']);
-      const xhr = getNetworkRequestCount(['xmlhttprequest']);
-      const other = total - fetch - xhr;
-      setStats({ total, fetch, xhr, other });
-      
-      // Get enhanced request list
       const enhancedReqs = getEnhancedRequests();
       setRequests(enhancedReqs);
+      
+      // Calculate stats
+      const total = enhancedReqs.length;
+      const fetch = enhancedReqs.filter(r => r.type === 'fetch').length;
+      const xhr = enhancedReqs.filter(r => r.type === 'xhr').length;
+      const other = total - fetch - xhr;
+      setStats({ total, fetch, xhr, other });
     } catch (err) {
       // ignore during init
     }
@@ -95,7 +91,6 @@ export default function App() {
 
   const handleClear = () => {
     if (confirm('Clear all recorded network requests?')) {
-      clearNetworkRequests();
       clearEnhancedRequests();
       setSelectedRequest(null);
       refresh();

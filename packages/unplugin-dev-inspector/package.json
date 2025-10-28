@@ -1,0 +1,115 @@
+{
+  "name": "unplugin-dev-inspector",
+  "version": "0.0.1",
+  "description": "Universal dev inspector plugin for React - inspect component sources and API calls in any bundler",
+  "type": "module",
+  "license": "MIT",
+  "author": "Author Name <author.name@mail.com>",
+  "files": [
+    "dist",
+    "client/dist"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "import": "./dist/vite.js",
+      "require": "./dist/vite.cjs"
+    },
+    "./webpack": {
+      "types": "./dist/webpack.d.ts",
+      "import": "./dist/webpack.js",
+      "require": "./dist/webpack.cjs"
+    },
+    "./rollup": {
+      "types": "./dist/rollup.d.ts",
+      "import": "./dist/rollup.js",
+      "require": "./dist/rollup.cjs"
+    },
+    "./esbuild": {
+      "types": "./dist/esbuild.d.ts",
+      "import": "./dist/esbuild.js",
+      "require": "./dist/esbuild.cjs"
+    },
+    "./rspack": {
+      "types": "./dist/rspack.d.ts",
+      "import": "./dist/rspack.js",
+      "require": "./dist/rspack.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "pnpm build:plugin && pnpm build:client",
+    "build:plugin": "tsdown",
+    "build:client": "node build-client.mjs",
+    "dev": "tsdown --watch",
+    "dev:client": "node build-client.mjs"
+  },
+  "peerDependencies": {
+    "esbuild": ">=0.17.0",
+    "rollup": ">=3.0.0",
+    "vite": ">=4.0.0",
+    "webpack": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    },
+    "webpack": {
+      "optional": true
+    },
+    "rollup": {
+      "optional": true
+    },
+    "esbuild": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@mcpc-tech/cmcp": "^0.0.9",
+    "@modelcontextprotocol/sdk": "^1.20.1",
+    "@radix-ui/primitive": "^1.1.3",
+    "@radix-ui/react-collapsible": "^1.1.12",
+    "@radix-ui/react-compose-refs": "^1.1.2",
+    "@radix-ui/react-context": "^1.1.2",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-dismissable-layer": "^1.1.11",
+    "@radix-ui/react-focus-guards": "^1.1.3",
+    "@radix-ui/react-focus-scope": "^1.1.7",
+    "@radix-ui/react-id": "^1.1.1",
+    "@radix-ui/react-portal": "^1.1.9",
+    "@radix-ui/react-presence": "^1.1.5",
+    "@radix-ui/react-primitive": "^2.1.3",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@radix-ui/react-use-controllable-state": "^1.2.2",
+    "aria-hidden": "^1.2.6",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.546.0",
+    "next-themes": "^0.4.6",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-remove-scroll": "^2.7.1",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.3.1",
+    "unplugin": "^2.3.10"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.14",
+    "@types/node": "^24.7.2",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "esbuild": "^0.25.11",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.14",
+    "tsdown": "^0.15.6",
+    "typescript": "^5.9.3"
+  }
+}

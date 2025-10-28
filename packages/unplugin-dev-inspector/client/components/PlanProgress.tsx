@@ -4,7 +4,7 @@ import {
   TaskTrigger,
   TaskContent,
   TaskItem,
-} from "../../../src/components/ai-elements/task";
+} from "./ai-elements/task";
 import { CheckCircle2, Circle, AlertCircle, Loader } from "lucide-react";
 
 interface PlanStep {
