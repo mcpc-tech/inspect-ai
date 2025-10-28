@@ -19,8 +19,8 @@ import {
   type EnhancedNetworkRequest 
 } from './interceptor';
 
-// Initialize interceptors
-initInterceptors();
+// Initialize interceptors, this messes with mcp sse connections, disable for now
+// initInterceptors();
 
 const POLL_MS = 1500;
 
