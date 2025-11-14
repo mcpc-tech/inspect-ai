@@ -5,34 +5,24 @@ import { randomUUID } from "crypto";
 import type { Connect } from "vite";
 import { bindPuppet, createClientExecServer } from "@mcpc-tech/cmcp";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { createSourceInspectorMcpServer } from "./mcp-server-impl.js";
+import { createInspectorMcpServer } from "../mcp";
 
 /**
  * Setup MCP server endpoints in Vite dev server
  */
-export function setupMcpServer(
-  middlewares: Connect.Server
-) {
-  const mcpServer = createSourceInspectorMcpServer();
+export async function setupMcpMiddleware(middlewares: Connect.Server) {
+  const mcpServer = await createInspectorMcpServer();
 
-  // Store transports by session ID
   const transports: Record<
     string,
     StreamableHTTPServerTransport | SSEServerTransport
   > = {};
 
-  console.log("\n🔌 MCP Server enabled!");
-  console.log("📡 Streamable HTTP: POST/GET/DELETE to /__mcp__");
-  console.log(
-    "📡 SSE (deprecated): GET /__mcp__/sse, POST /__mcp__/messages\n"
-  );
-
-  // Middleware to handle MCP requests
   middlewares.use(
     async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
       const url = req.url || "";
 
-      // Streamable HTTP endpoint - supports both new and old protocol
+      // Streamable HTTP endpoint
       if (
         url.startsWith("/__mcp__") &&
         !url.startsWith("/__mcp__/sse") &&
@@ -50,7 +40,7 @@ export function setupMcpServer(
         return;
       }
 
-      // SSE endpoint (deprecated, for backwards compatibility)
+      // SSE endpoint (deprecated)
       if (url.startsWith("/__mcp__/sse") && req.method === "GET") {
         await handleSseConnection(req, res, transports);
         return;
@@ -214,17 +204,17 @@ async function handleSseConnection(
     const puppetId = url.searchParams.get("puppetId");
 
     const runningHostTransport = Object.values(transports).find(
-      // @ts-expect-error -
+      // @ts-expect-error - puppet transport marker
       (t) => t.__puppetId === aliasSessionId
     );
-    // Reconnect puppet transport if found
+    
     if (runningHostTransport) {
       bindPuppet(runningHostTransport, transport);
-      console.log(`Reconnected puppet transport: ${aliasSessionId}`);
     }
+    
     if (puppetId) {
       bindPuppet(transport, transports[puppetId]);
-      // @ts-expect-error -
+      // @ts-expect-error - puppet transport marker
       transport.__puppetId = puppetId;
     }
 
@@ -234,13 +224,12 @@ async function handleSseConnection(
     }
 
     transport.onclose = () => {
-      console.log(`SSE transport closed: ${aliasSessionId}`);
       delete transports[sessionId];
       delete transports[aliasSessionId];
     };
 
     const server = createClientExecServer(
-      createSourceInspectorMcpServer(),
+      await createInspectorMcpServer(),
       "source-inspector-controller"
     );
     await server.connect(transport);

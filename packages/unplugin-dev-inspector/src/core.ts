@@ -1,9 +1,6 @@
 import { createUnplugin } from "unplugin";
-import fs from "fs";
-import path from "path";
-import type { Connect } from "vite";
-import { setupMcpServer } from "./mcp-server.js";
-import { setupInspectorMiddleware } from "./inspector-middleware.js";
+import { setupMcpMiddleware } from "./middleware/mcp-middleware";
+import { setupInspectorMiddleware } from "./middleware/inspector-middleware";
 
 export interface DevInspectorOptions {
   /**
@@ -17,46 +14,6 @@ export interface DevInspectorOptions {
    * @default true
    */
   enableMcp?: boolean;
-}
-
-function extractComponentName(code: string, id: string): string {
-  let match = code.match(/export\s+default\s+function\s+(\w+)/);
-  if (match) return match[1];
-
-  match = code.match(/export\s+default\s+(\w+)/);
-  if (match) return match[1];
-
-  match = code.match(/function\s+(\w+)\s*\(/);
-  if (match) return match[1];
-
-  match = code.match(/const\s+(\w+)\s*=/);
-  if (match) return match[1];
-
-  return path.basename(id, path.extname(id));
-}
-
-function getLineAndColumn(
-  code: string,
-  componentName: string
-): { line: number; column: number } {
-  const lines = code.split("\n");
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (
-      line.includes(`function ${componentName}`) ||
-      line.includes(`const ${componentName}`) ||
-      (line.includes("export default") && line.includes(componentName))
-    ) {
-      const column = line.indexOf(componentName) + 1;
-      return {
-        line: i + 1,
-        column: column,
-      };
-    }
-  }
-
-  return { line: 1, column: 1 };
 }
 
 export const unplugin = createUnplugin<DevInspectorOptions | undefined>(
@@ -93,12 +50,12 @@ export const unplugin = createUnplugin<DevInspectorOptions | undefined>(
           );
         },
 
-        configureServer(server) {
+        async configureServer(server) {
           console.log("\n✨ Dev Inspector Plugin enabled!");
           console.log("👁️  Click the floating eye icon to inspect elements\n");
 
           if (enableMcp) {
-            setupMcpServer(server.middlewares);
+            await setupMcpMiddleware(server.middlewares);
           }
           setupInspectorMiddleware(server.middlewares);
         },
