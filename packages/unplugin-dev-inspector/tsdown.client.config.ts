@@ -10,7 +10,7 @@ export default defineConfig({
   clean: true,
   dts: false,
   external: [], // Don't externalize anything
-  noExternal: [/.*/], // Bundle everything
+  noExternal: [/@mcpc-tech\/cmcp/, /.*/], // Bundle everything including @mcpc-tech/cmcp
   platform: 'browser',
   globalName: 'DevInspector',
   define: {
