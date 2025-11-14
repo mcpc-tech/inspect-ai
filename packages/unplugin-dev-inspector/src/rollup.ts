@@ -1,4 +1,4 @@
-import { unplugin } from './core';
+import { unplugin } from "./core";
 
 export default unplugin.rollup;
-export type { SourceMetadata, DevInspectorOptions } from './core';
+export type { DevInspectorOptions } from "./core";

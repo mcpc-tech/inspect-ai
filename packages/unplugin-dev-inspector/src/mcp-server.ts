@@ -2,96 +2,18 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { IncomingMessage, ServerResponse } from "http";
 import { randomUUID } from "crypto";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  ListResourcesRequestSchema,
-  ReadResourceRequestSchema,
-  McpError,
-  ErrorCode,
-  type ReadResourceResult,
-} from "@modelcontextprotocol/sdk/types.js";
 import type { Connect } from "vite";
-
 import { bindPuppet, createClientExecServer } from "@mcpc-tech/cmcp";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-
-interface SourceMetadata {
-  file: string;
-  component: string;
-  apis: string[];
-  line: number;
-  column: number;
-}
-
-/**
- * Create and configure the MCP server for source inspection
- */
-function createSourceInspectorMcpServer(
-  sourceMapCache: Map<string, SourceMetadata>
-) {
-  const mcpServer = new Server(
-    {
-      name: "source-inspector-mcp-server",
-      version: "1.0.0",
-    },
-    {
-      capabilities: {
-        resources: {},
-        tools: {},
-      },
-    }
-  );
-
-  // List resources handler
-  mcpServer.setRequestHandler(ListResourcesRequestSchema, () => {
-    return {
-      resources: [
-        {
-          uri: "inspector://source-map",
-          name: "Source Map",
-          description: "Complete source map cache data",
-          mimeType: "application/json",
-        },
-      ],
-    };
-  });
-
-  // Read resource handler
-  mcpServer.setRequestHandler(
-    ReadResourceRequestSchema,
-    (request, _extra): ReadResourceResult => {
-      if (request.params.uri === "inspector://source-map") {
-        const sourceMapData: Record<string, SourceMetadata> = {};
-        for (const [key, value] of sourceMapCache.entries()) {
-          sourceMapData[key] = value;
-        }
-
-        return {
-          contents: [
-            {
-              uri: "inspector://source-map",
-              mimeType: "application/json",
-              text: JSON.stringify(sourceMapData, null, 2),
-            },
-          ],
-        };
-      }
-      throw new McpError(ErrorCode.InvalidRequest, "Resource not found");
-    }
-  );
-
-  return mcpServer;
-}
+import { createSourceInspectorMcpServer } from "./mcp-server-impl.js";
 
 /**
  * Setup MCP server endpoints in Vite dev server
  */
 export function setupMcpServer(
-  sourceMapCache: Map<string, SourceMetadata>,
   middlewares: Connect.Server
 ) {
-  const mcpServer = createSourceInspectorMcpServer(sourceMapCache);
+  const mcpServer = createSourceInspectorMcpServer();
 
   // Store transports by session ID
   const transports: Record<
@@ -130,7 +52,7 @@ export function setupMcpServer(
 
       // SSE endpoint (deprecated, for backwards compatibility)
       if (url.startsWith("/__mcp__/sse") && req.method === "GET") {
-        await handleSseConnection(req, res, sourceMapCache, transports);
+        await handleSseConnection(req, res, transports);
         return;
       }
 
@@ -282,7 +204,6 @@ async function handleStreamableHttpDelete(
 async function handleSseConnection(
   req: IncomingMessage,
   res: ServerResponse,
-  sourceMapCache: Map<string, SourceMetadata>,
   transports: Record<string, StreamableHTTPServerTransport | SSEServerTransport>
 ) {
   try {
@@ -319,7 +240,7 @@ async function handleSseConnection(
     };
 
     const server = createClientExecServer(
-      createSourceInspectorMcpServer(sourceMapCache),
+      createSourceInspectorMcpServer(),
       "source-inspector-controller"
     );
     await server.connect(transport);
