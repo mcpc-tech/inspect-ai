@@ -24,7 +24,8 @@ export default defineConfig({
     'http',
     'crypto',
     'url',
-  ],
+      ],
+  noExternal: ['@mcpc-tech/cmcp'],
   define: {
     'process.env.NODE_ENV': '"production"',
   },
