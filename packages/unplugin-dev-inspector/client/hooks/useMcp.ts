@@ -3,7 +3,6 @@ import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { useEffect, useRef } from "react";
 import { createClientExecClient } from "@mcpc-tech/cmcp";
 
-const INSPECTOR_BUTTON_ID = "source-inspector-btn";
 const TIMEOUT_MS = 600_000;
 
 let pendingResolve: ((value: any) => void) | null = null;
@@ -23,18 +22,8 @@ function clearPendingRequest() {
 }
 
 function activateInspector() {
-  const button = document.getElementById(
-    INSPECTOR_BUTTON_ID
-  ) as HTMLButtonElement;
-
-  if (!button) {
-    return { error: "Inspector button not found" };
-  }
-
-  if (!button.classList.contains("active")) {
-    button.click();
-  }
-
+  // Dispatch custom event to activate inspector (works across shadow DOM)
+  window.dispatchEvent(new CustomEvent('activate-inspector'));
   return { success: true };
 }
 
@@ -78,6 +67,16 @@ function report_plan_progress(args: any) {
   if (isAllCompleted && result) {
     responseData.result = result;
     console.log("🎉 All tasks completed with result:", result);
+    
+    // Dispatch result event to update UI to success state
+    window.dispatchEvent(
+      new CustomEvent("feedback-result-received", {
+        detail: {
+          status: "success",
+          result: { message: result },
+        },
+      })
+    );
   }
 
   return {
@@ -129,13 +128,7 @@ export function useMcp() {
 
       cancelPendingRequest("New inspect request started");
 
-      const activation = activateInspector();
-      if (activation.error) {
-        return {
-          content: [{ type: "text", text: `Error: ${activation.error}` }],
-          isError: true,
-        };
-      }
+      activateInspector();
 
       console.log(`🔍 Inspector: ${prompt}`);
 

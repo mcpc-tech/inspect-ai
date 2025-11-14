@@ -48,7 +48,7 @@
     "build": "pnpm build:plugin && pnpm build:client",
     "build:plugin": "tsdown",
     "build:client": "tsdown --config tsdown.client.config.ts",
-    "dev": "tsdown --watch",
+    "dev:plugin": "tsdown --watch",
     "dev:client": "tsdown --config tsdown.client.config.ts --watch",
     "prepublishOnly": "pnpm build"
   },

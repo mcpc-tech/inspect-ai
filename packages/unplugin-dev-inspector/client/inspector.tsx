@@ -37,11 +37,19 @@ const InspectorContainer: React.FC = () => {
       showNotif(status === 'success' ? '✅ AI processing completed' : '⚠️ AI processing failed');
     };
 
+    const handleActivateInspector = () => {
+      if (!isActive && btnRef.current) {
+        btnRef.current.click();
+      }
+    };
+
     window.addEventListener('feedback-result-received', handleResultReceived as EventListener);
+    window.addEventListener('activate-inspector', handleActivateInspector);
     return () => {
       window.removeEventListener('feedback-result-received', handleResultReceived as EventListener);
+      window.removeEventListener('activate-inspector', handleActivateInspector);
     };
-  }, [showNotif]);
+  }, [showNotif, isActive]);
 
   useInspectorHover({
     isActive,
