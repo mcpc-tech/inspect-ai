@@ -1,3 +1,17 @@
+---
+title: Inspect Web Mcp
+emoji: 😻
+colorFrom: purple
+colorTo: red
+sdk: gradio
+sdk_version: 5.49.1
+app_file: app.py
+pinned: false
+short_description: Debugging your web project using MCP with inspecting UI
+tags:
+  - building-mcp-track-creative
+---
+
 # @mcpc-tech/unplugin-dev-inspector-mcp
 
 Universal dev inspector plugin for React - inspect component sources and API calls in any bundler.
