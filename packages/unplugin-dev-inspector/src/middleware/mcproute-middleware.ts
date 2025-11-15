@@ -3,7 +3,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import type { IncomingMessage, ServerResponse } from "http";
 import { randomUUID } from "crypto";
 import type { Connect } from "vite";
-import { bindPuppet, createClientExecServer } from "@mcpc-tech/cmcp";
+import { bindPuppet } from "@mcpc-tech/cmcp";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { createInspectorMcpServer } from "../mcp";
 
@@ -11,8 +11,6 @@ import { createInspectorMcpServer } from "../mcp";
  * Setup MCP server endpoints in Vite dev server
  */
 export async function setupMcpMiddleware(middlewares: Connect.Server) {
-  const mcpServer = await createInspectorMcpServer();
-
   const transports: Record<
     string,
     StreamableHTTPServerTransport | SSEServerTransport
@@ -21,6 +19,7 @@ export async function setupMcpMiddleware(middlewares: Connect.Server) {
   middlewares.use(
     async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
       const url = req.url || "";
+      const mcpServer = await createInspectorMcpServer();
 
       // Streamable HTTP endpoint
       if (
@@ -42,7 +41,7 @@ export async function setupMcpMiddleware(middlewares: Connect.Server) {
 
       // SSE endpoint (deprecated)
       if (url.startsWith("/__mcp__/sse") && req.method === "GET") {
-        await handleSseConnection(req, res, transports);
+        await handleSseConnection(req, res, mcpServer, transports);
         return;
       }
 
@@ -194,6 +193,7 @@ async function handleStreamableHttpDelete(
 async function handleSseConnection(
   req: IncomingMessage,
   res: ServerResponse,
+  mcpServer: Server,
   transports: Record<string, StreamableHTTPServerTransport | SSEServerTransport>
 ) {
   try {
@@ -207,12 +207,16 @@ async function handleSseConnection(
       // @ts-expect-error - puppet transport marker
       (t) => t.__puppetId === aliasSessionId
     );
-    
+
     if (runningHostTransport) {
       bindPuppet(runningHostTransport, transport);
     }
-    
+
     if (puppetId) {
+      if (!transports[puppetId]){
+        // throw new Error(`Puppet ${puppetId} not found`);
+      }
+
       bindPuppet(transport, transports[puppetId]);
       // @ts-expect-error - puppet transport marker
       transport.__puppetId = puppetId;
@@ -228,11 +232,7 @@ async function handleSseConnection(
       delete transports[aliasSessionId];
     };
 
-    const server = createClientExecServer(
-      await createInspectorMcpServer(),
-      "source-inspector-controller"
-    );
-    await server.connect(transport);
+    await mcpServer.connect(transport);
   } catch (error) {
     console.error("Error establishing SSE connection:", error);
     if (!res.headersSent) {

@@ -23,18 +23,32 @@ function clearPendingRequest() {
 
 function activateInspector() {
   // Dispatch custom event to activate inspector (works across shadow DOM)
-  window.dispatchEvent(new CustomEvent('activate-inspector'));
+  window.dispatchEvent(new CustomEvent("activate-inspector"));
   return { success: true };
 }
 
 function formatResult(sourceInfo: any, feedback: string) {
+  const { file, line, column, component } = sourceInfo;
+  
+  // Extract full path for display
+  const fullPath = file.startsWith('examples/') ? file : `examples/demo/${file}`;
+  
   return {
     content: [
       {
         type: "text",
-        text: `Source: ${sourceInfo.file} (${sourceInfo.line}:${sourceInfo.column})
-Feedback: ${feedback}
+        text: `# Element Inspection Result
 
+## Source Location
+- **File**: \`${fullPath}\`
+- **Line**: ${line}
+- **Column**: ${column}
+- **Component**: ${component}
+
+## User Feedback
+${feedback}
+
+## Instructions for AI
 You must create a step-by-step plan and use the "report_plan_progress" tool to report progress for each step. When all steps are completed, you MUST provide the "result" field in the final report_plan_progress call.`,
       },
     ],
@@ -52,13 +66,15 @@ function report_plan_progress(args: any) {
     })
   );
 
-  const completed = plan.steps.filter((s: any) => s.status === "completed").length;
+  const completed = plan.steps.filter(
+    (s: any) => s.status === "completed"
+  ).length;
   const total = plan.steps.length;
   const isAllCompleted = completed === total;
-  
+
   console.log(`✅ Plan progress: ${completed}/${total} steps completed`);
 
-  const responseData: any = { 
+  const responseData: any = {
     success: true,
     completed,
     total,
@@ -67,7 +83,7 @@ function report_plan_progress(args: any) {
   if (isAllCompleted && result) {
     responseData.result = result;
     console.log("🎉 All tasks completed with result:", result);
-    
+
     // Dispatch result event to update UI to success state
     window.dispatchEvent(
       new CustomEvent("feedback-result-received", {
@@ -170,42 +186,43 @@ export function useMcp() {
         },
         implementation: inspectElement,
       },
-      {
-        name: "report_plan_progress",
-        description: "Report plan progress with step status updates.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            plan: {
-              type: "object",
-              properties: {
-                steps: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      id: { type: "number" },
-                      title: { type: "string" },
-                      status: {
-                        type: "string",
-                        enum: ["pending", "in-progress", "completed", "failed"],
-                      },
-                    },
-                    required: ["id", "title", "status"],
-                  },
-                },
-              },
-              required: ["steps"],
-            },
-            result: {
-              type: "string",
-              description: "Result summary to be included when all tasks are completed",
-            },
-          },
-          required: ["plan"],
-        },
-        implementation: report_plan_progress,
-      },
+      // {
+      //   name: "report_plan_progress",
+      //   description: "Report plan progress with step status updates.",
+      //   inputSchema: {
+      //     type: "object",
+      //     properties: {
+      //       plan: {
+      //         type: "object",
+      //         properties: {
+      //           steps: {
+      //             type: "array",
+      //             items: {
+      //               type: "object",
+      //               properties: {
+      //                 id: { type: "number" },
+      //                 title: { type: "string" },
+      //                 status: {
+      //                   type: "string",
+      //                   enum: ["pending", "in-progress", "completed", "failed"],
+      //                 },
+      //               },
+      //               required: ["id", "title", "status"],
+      //             },
+      //           },
+      //         },
+      //         required: ["steps"],
+      //       },
+      //       result: {
+      //         type: "string",
+      //         description:
+      //           "Result summary to be included when all tasks are completed",
+      //       },
+      //     },
+      //     required: ["plan"],
+      //   },
+      //   implementation: report_plan_progress,
+      // },
     ]);
 
     const transport = new SSEClientTransport(

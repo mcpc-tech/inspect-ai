@@ -1,6 +1,7 @@
 import { createUnplugin } from "unplugin";
-import { setupMcpMiddleware } from "./middleware/mcp-middleware";
+import { setupMcpMiddleware } from "./middleware/mcproute-middleware";
 import { setupInspectorMiddleware } from "./middleware/inspector-middleware";
+import { transformJSX } from "./compiler/jsx-transform";
 
 export interface DevInspectorOptions {
   /**
@@ -32,7 +33,22 @@ export const unplugin = createUnplugin<DevInspectorOptions | undefined>(
 
       enforce: "pre",
 
-      transform() {},
+      async transform(code, id) {
+        // Only process JSX/TSX files
+        if (!id.match(/\.(jsx|tsx)$/)) return null;
+        
+        // Skip node_modules
+        if (id.includes('node_modules')) return null;
+
+        // Use Babel-based JSX transform (following Vue Inspector pattern)
+        try {
+          const result = await transformJSX({ code, id });
+          return result;
+        } catch (error) {
+          console.error(`[dev-inspector] Failed to transform ${id}:`, error);
+          return null;
+        }
+      },
 
       // Vite-specific hooks
       vite: {

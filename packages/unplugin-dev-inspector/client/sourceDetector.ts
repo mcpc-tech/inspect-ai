@@ -1,9 +1,39 @@
 import type { InspectedElement, ReactFiber } from './types';
 
 export const getSourceInfo = (element: Element): InspectedElement => {
+  // First, try to get data-source attribute directly
   let current: Element | null = element;
   const maxDepth = 20;
   let depth = 0;
+
+  // Check current element and parents for data-source attribute
+  while (current && depth < maxDepth) {
+    const dataSource = current.getAttribute('data-source');
+    if (dataSource) {
+      // Parse data-source format: "file:line:col"
+      const parts = dataSource.split(':');
+      if (parts.length >= 3) {
+        const col = parts.pop() || '0';
+        const line = parts.pop() || '0';
+        const file = parts.join(':'); // Re-join in case file path contains colons
+        
+        return {
+          file: file,
+          component: element.tagName.toLowerCase(),
+          apis: [],
+          line: parseInt(line, 10),
+          column: parseInt(col, 10),
+          element,
+        };
+      }
+    }
+    current = current.parentElement;
+    depth++;
+  }
+
+  // Fallback to React Fiber detection
+  current = element;
+  depth = 0;
 
   while (current && depth < maxDepth) {
     const fiberKey = Object.keys(current as any).find(key =>
