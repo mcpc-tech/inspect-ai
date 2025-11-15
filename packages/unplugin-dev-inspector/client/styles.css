@@ -69,6 +69,11 @@
   --color-ring: hsl(var(--ring));
 }
 
+/* Root container - no special positioning */
+#source-inspector-root {
+  z-index: 9999;
+}
+
 /* Toast animation */
 .toast-enter {
   animation: slide-in 0.25s ease;

@@ -6,6 +6,14 @@ export interface InspectedElement {
   line: number;
   column: number;
   element?: Element;
+  elementInfo?: {
+    tagName: string;
+    textContent: string;
+    className: string;
+    id: string;
+    attributes: Record<string, string>;
+    styles: Record<string, string>;
+  };
 }
 
 export interface ReactFiber {

@@ -1,5 +1,34 @@
 import type { InspectedElement, ReactFiber } from './types';
 
+function getElementInfo(element: Element) {
+  const computedStyles = window.getComputedStyle(element);
+  
+  return {
+    tagName: element.tagName.toLowerCase(),
+    textContent: element.textContent?.trim().slice(0, 100) || '',
+    className: element.className || '',
+    id: element.id || '',
+    attributes: Array.from(element.attributes).reduce((acc, attr) => {
+      if (!attr.name.startsWith('data-') && attr.name !== 'class' && attr.name !== 'id') {
+        acc[attr.name] = attr.value;
+      }
+      return acc;
+    }, {} as Record<string, string>),
+    styles: {
+      display: computedStyles.display,
+      position: computedStyles.position,
+      width: computedStyles.width,
+      height: computedStyles.height,
+      backgroundColor: computedStyles.backgroundColor,
+      color: computedStyles.color,
+      fontSize: computedStyles.fontSize,
+      padding: computedStyles.padding,
+      margin: computedStyles.margin,
+      border: computedStyles.border,
+    },
+  };
+}
+
 export const getSourceInfo = (element: Element): InspectedElement => {
   // First, try to get data-source attribute directly
   let current: Element | null = element;
@@ -24,6 +53,7 @@ export const getSourceInfo = (element: Element): InspectedElement => {
           line: parseInt(line, 10),
           column: parseInt(col, 10),
           element,
+          elementInfo: getElementInfo(element),
         };
       }
     }
@@ -51,7 +81,7 @@ export const getSourceInfo = (element: Element): InspectedElement => {
           if (componentName && componentName !== 'Anonymous' && componentName !== '') {
             const metadata = (window as any).__SOURCE_INSPECTOR__ && (window as any).__SOURCE_INSPECTOR__[componentName];
             if (metadata) {
-              return { ...metadata, element };
+              return { ...metadata, element, elementInfo: getElementInfo(element) };
             }
             return {
               file: 'unknown',
@@ -60,6 +90,7 @@ export const getSourceInfo = (element: Element): InspectedElement => {
               line: 0,
               column: 0,
               element,
+              elementInfo: getElementInfo(element),
             };
           }
         }
@@ -78,5 +109,6 @@ export const getSourceInfo = (element: Element): InspectedElement => {
     line: 0,
     column: 0,
     element,
+    elementInfo: getElementInfo(element),
   };
 };

@@ -8,7 +8,16 @@ export default function RequestList({
   requests: EnhancedNetworkRequest[];
   onSelect?: (request: EnhancedNetworkRequest) => void;
 }) {
-  if (!requests || requests.length === 0) return <pre className="p-4 bg-white rounded text-gray-500">No requests</pre>;
+  if (!requests || requests.length === 0) {
+    return (
+      <div className="p-6 bg-white rounded text-center">
+        <div className="text-gray-500 mb-2">No network requests captured yet</div>
+        <div className="text-sm text-gray-400">
+          Interact with your app to see network requests appear here
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="overflow-auto max-h-80 bg-white rounded">
       {requests.map((r, i) => (

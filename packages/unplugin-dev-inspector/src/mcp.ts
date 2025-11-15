@@ -106,9 +106,16 @@ export async function createInspectorMcpServer() {
       prompts: [
         {
           name: "grab-element",
-          title: "Get Element",
+          title: "Inspect Element",
           description:
-            "Inspect a specific element in the development environment.",
+            "Inspect a UI element and get user feedback for modifications.",
+          arguments: [],
+        },
+        {
+          name: "view-feedbacks",
+          title: "View All Feedbacks",
+          description:
+            "View all current feedback items in the queue with their status.",
           arguments: [],
         },
       ],
@@ -125,6 +132,19 @@ export async function createInspectorMcpServer() {
       return {
         messages:
           element?.content.map((item) => ({
+            role: "user",
+            content: item,
+          })) || [],
+      } as GetPromptResult;
+    } else if (request.params.name === "view-feedbacks") {
+      const feedbacks = (await callMcpMethod(mcpServer, "tools/call", {
+        name: "get_all_feedbacks",
+        arguments: {},
+      })) as CallToolResult;
+
+      return {
+        messages:
+          feedbacks?.content.map((item) => ({
             role: "user",
             content: item,
           })) || [],

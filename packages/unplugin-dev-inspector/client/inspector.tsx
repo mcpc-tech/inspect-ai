@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client';
 import type { InspectedElement } from './types';
 import { Notification } from './components/Notification';
 import { FeedbackBubble } from './components/FeedbackBubble';
+import { FeedbackCart, type FeedbackItem } from './components/FeedbackCart';
 import { InspectorButton } from './components/InspectorButton';
 import { Overlay, Tooltip } from './components/Overlays';
 import { useNotification } from './hooks/useNotification';
@@ -12,43 +13,117 @@ import { useInspectorClick } from './hooks/useInspectorClick';
 import { useMcp } from './hooks/useMcp';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from './components/ui/sonner';
+import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover';
+
+const STORAGE_KEY = 'inspector-feedback-items';
+
+function loadFeedbackItems(): FeedbackItem[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveFeedbackItems(items: FeedbackItem[]) {
+  try {
+    console.log('💾 Saving feedback items:', items);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  } catch {
+    console.warn('Failed to save feedback items');
+  }
+}
 
 const InspectorContainer: React.FC = () => {
   useMcp();
+  
   const [isActive, setIsActive] = useState(false);
   const [sourceInfo, setSourceInfo] = useState<InspectedElement | null>(null);
-  const [bubbleMode, setBubbleMode] = useState<'input' | 'loading' | 'success' | 'error' | null>(null);
-  const [resultMessage, setResultMessage] = useState<string>('');
+  const [bubbleMode, setBubbleMode] = useState<'input' | null>(null);
+  const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>(loadFeedbackItems);
+  const [showCart, setShowCart] = useState(false);
 
   const btnRef = useRef<HTMLButtonElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const { notification, showNotif } = useNotification();
 
+  // Restore active feedback ID on mount
+  useEffect(() => {
+    const activeFeedbackId = sessionStorage.getItem('inspector-current-feedback-id');
+    if (!activeFeedbackId) return;
+    
+    const feedbackExists = feedbackItems.some(item => item.id === activeFeedbackId);
+    if (!feedbackExists) {
+      sessionStorage.removeItem('inspector-current-feedback-id');
+    }
+  }, []);
+
+  // Handle ESC key to exit inspection
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isActive) {
+        handleBubbleClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isActive]);
+
+  // Save feedback items to localStorage whenever they change
+  useEffect(() => {
+    saveFeedbackItems(feedbackItems);
+  }, [feedbackItems]);
+
+  // Handle feedback result updates
   useEffect(() => {
     const handleResultReceived = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const { status, result } = customEvent.detail;
+      const { status, result, feedbackId } = (event as CustomEvent).detail;
       
-      setBubbleMode(status === 'success' ? 'success' : 'error');
-      setResultMessage(result.message || 'Processing completed');
+      setFeedbackItems(prev => 
+        prev.map(item => 
+          item.id === feedbackId 
+            ? { 
+                ...item, 
+                status: status === 'success' ? 'success' : 'error',
+                result: result.message || `Processing ${status === 'success' ? 'completed' : 'failed'}`
+              }
+            : item
+        )
+      );
       
       showNotif(status === 'success' ? '✅ AI processing completed' : '⚠️ AI processing failed');
     };
 
-    const handleActivateInspector = () => {
-      if (!isActive && btnRef.current) {
-        btnRef.current.click();
-      }
+    const handlePlanProgress = (event: Event) => {
+      const { plan, feedbackId } = (event as CustomEvent).detail;
+      const completedSteps = plan.steps.filter((s: any) => s.status === 'completed').length;
+      
+      setFeedbackItems(prev =>
+        prev.map(item =>
+          item.id === feedbackId
+            ? { ...item, status: 'loading', progress: { completed: completedSteps, total: plan.steps.length } }
+            : item
+        )
+      );
     };
 
-    window.addEventListener('feedback-result-received', handleResultReceived as EventListener);
-    window.addEventListener('activate-inspector', handleActivateInspector);
-    return () => {
-      window.removeEventListener('feedback-result-received', handleResultReceived as EventListener);
-      window.removeEventListener('activate-inspector', handleActivateInspector);
+    const handleActivateInspector = () => {
+      if (!isActive && btnRef.current) btnRef.current.click();
     };
+
+    const events = [
+      ['feedback-result-received', handleResultReceived],
+      ['plan-progress-reported', handlePlanProgress],
+      ['activate-inspector', handleActivateInspector]
+    ] as const;
+
+    events.forEach(([name, handler]) => window.addEventListener(name, handler as EventListener));
+    return () => events.forEach(([name, handler]) => window.removeEventListener(name, handler as EventListener));
   }, [showNotif, isActive]);
 
   useInspectorHover({
@@ -76,9 +151,8 @@ const InspectorContainer: React.FC = () => {
     e.stopPropagation();
     const newActive = !isActive;
     setIsActive(newActive);
-    if (btnRef.current) {
-      btnRef.current.classList.toggle('active', newActive);
-    }
+    
+    btnRef.current?.classList.toggle('active', newActive);
     document.body.style.cursor = newActive ? 'crosshair' : '';
 
     if (!newActive) {
@@ -90,33 +164,89 @@ const InspectorContainer: React.FC = () => {
   };
 
   const handleFeedbackSubmit = (feedback: string) => {
-    console.log('📤 Feedback submitted:', feedback);
-    if (sourceInfo) {
-      setBubbleMode('loading');
-      const event = new CustomEvent('element-inspected', {
-        detail: { sourceInfo, feedback },
-      });
-      console.log('🔔 Dispatching element-inspected event');
-      window.dispatchEvent(event);
-    }
+    if (!sourceInfo) return;
+    
+    const feedbackId = `feedback-${Date.now()}`;
+    const newItem: FeedbackItem = {
+      id: feedbackId,
+      sourceInfo: {
+        file: sourceInfo.file,
+        component: sourceInfo.component,
+        line: sourceInfo.line,
+        column: sourceInfo.column,
+        elementInfo: sourceInfo.elementInfo,
+      },
+      feedback,
+      status: 'loading',
+      timestamp: Date.now(),
+    };
+    
+    setFeedbackItems(prev => [...prev, newItem]);
+    setBubbleMode(null);
+    setIsActive(false);
+    btnRef.current?.classList.remove('active');
+    document.body.style.cursor = '';
+    
+    window.dispatchEvent(new CustomEvent('element-inspected', {
+      detail: { sourceInfo, feedback, feedbackId },
+    }));
   };
 
   const handleBubbleClose = () => {
     setBubbleMode(null);
     setIsActive(false);
-    if (btnRef.current) {
-      btnRef.current.classList.remove('active');
-    }
+    btnRef.current?.classList.remove('active');
     document.body.style.cursor = '';
+    
     if (overlayRef.current) overlayRef.current.style.display = 'none';
     if (tooltipRef.current) tooltipRef.current.style.display = 'none';
 
     window.dispatchEvent(new CustomEvent('inspector-cancelled'));
   };
 
+  const handleRemoveFeedback = (id: string) => {
+    setFeedbackItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  const handleMouseEnter = () => {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    if (feedbackItems.length > 0) setShowCart(true);
+  };
+
+  const handleMouseLeave = () => {
+    hideTimerRef.current = setTimeout(() => setShowCart(false), 150);
+  };
+
   return (
     <>
-      <InspectorButton ref={btnRef} isActive={isActive} onClick={toggleInspector} />
+      <div
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <Popover open={showCart && feedbackItems.length > 0} onOpenChange={setShowCart}>
+          <PopoverTrigger asChild>
+            <InspectorButton 
+              ref={btnRef} 
+              isActive={isActive} 
+              onClick={toggleInspector}
+              feedbackCount={feedbackItems.length}
+            />
+          </PopoverTrigger>
+          <PopoverContent 
+            className="w-80 p-0" 
+            side="top" 
+            align="center"
+            sideOffset={4}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+          >
+            <FeedbackCart
+              items={feedbackItems}
+              onRemove={handleRemoveFeedback}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
       <Overlay ref={overlayRef} visible={isActive && bubbleMode === null} />
       <Tooltip ref={tooltipRef} visible={isActive && bubbleMode === null} />
 
@@ -128,7 +258,6 @@ const InspectorContainer: React.FC = () => {
           mode={bubbleMode}
           onSubmit={handleFeedbackSubmit}
           onClose={handleBubbleClose}
-          resultMessage={resultMessage}
         />
       )}
       
