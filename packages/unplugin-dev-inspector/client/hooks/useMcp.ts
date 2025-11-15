@@ -37,19 +37,18 @@ function formatResult(sourceInfo: any, feedback: string) {
     content: [
       {
         type: "text",
-        text: `# Element Inspection Result
-
-## Source Location
-- **File**: \`${fullPath}\`
-- **Line**: ${line}
-- **Column**: ${column}
-- **Component**: ${component}
-
-## User Feedback
-${feedback}
-
-## Instructions for AI
-You must create a step-by-step plan and use the "report_plan_progress" tool to report progress for each step. When all steps are completed, you MUST provide the "result" field in the final report_plan_progress call.`,
+        text: `<inspection>
+  <result>
+    <sourceLocation>
+      <file>${fullPath}</file>
+      <line>${line}</line>
+      <column>${column}</column>
+      <component>${component}</component>
+    </sourceLocation>
+    <userFeedback>${feedback}</userFeedback>
+    <instructions>You must create a step-by-step plan and use the "report_plan_progress" tool to report progress for each step. When all steps are completed, you MUST provide the "result" field in the final report_plan_progress call.</instructions>
+  </result>
+</inspection>`,
       },
     ],
   };
