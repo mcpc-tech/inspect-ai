@@ -2,8 +2,7 @@ import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { XIcon } from "lucide-react"
 
-import { cn } from "../../lib/utils"
-import { useShadowRoot } from "../../inspector"
+import { cn } from "client/lib/utils"
 
 function Dialog({
   ...props
@@ -20,8 +19,7 @@ function DialogTrigger({
 function DialogPortal({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Portal>) {
-  const shadowRoot = useShadowRoot();
-  return <DialogPrimitive.Portal data-slot="dialog-portal" container={shadowRoot as any} {...props} />
+  return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />
 }
 
 function DialogClose({

@@ -2,6 +2,7 @@ import * as React from "react"
 import * as PopoverPrimitive from "@radix-ui/react-popover"
 
 import { cn } from "../../lib/utils"
+import { useShadowRoot } from "../../inspector"
 
 function Popover({
   ...props
@@ -21,10 +22,11 @@ function PopoverContent({
   sideOffset = 4,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
-  const rootElement = typeof document !== 'undefined' ? document.getElementById('source-inspector-root') : null;
+  const shadowRoot = useShadowRoot();
+  const container = shadowRoot || (typeof document !== 'undefined' ? document.getElementById('source-inspector-root') : null);
   
   return (
-    <PopoverPrimitive.Portal container={rootElement || undefined}>
+    <PopoverPrimitive.Portal container={container as any}>
       <PopoverPrimitive.Content
         data-slot="popover-content"
         align={align}

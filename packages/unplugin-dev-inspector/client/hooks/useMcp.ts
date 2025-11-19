@@ -2,6 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { useEffect, useRef } from "react";
 import { createClientExecClient } from "@mcpc-tech/cmcp";
+import { TOOL_SCHEMAS } from "../../src/tool-schemas.js";
 
 const STORAGE_KEY = 'inspector-feedback-items';
 const FEEDBACK_ID_KEY = 'inspector-current-feedback-id';
@@ -177,10 +178,10 @@ export function useMcp() {
 
     const client = createClientExecClient(
       new Client(
-        { name: "use-mcp-react-client", version: "0.1.0" },
+        { name: "inspector", version: "0.1.0" },
         { capabilities: { tools: {} } }
       ),
-      "use-mcp-react-client"
+      "inspector"
     );
 
     // Tool implementations
@@ -230,72 +231,15 @@ export function useMcp() {
     // Register all tools
     client.registerTools([
       {
-        name: "get_all_feedbacks",
-        description: "Get a list of all current feedback items in the queue, including their status (pending/loading/success/error) and progress. Use this to see what tasks are already being worked on.",
-        inputSchema: {
-          type: "object",
-          properties: {},
-        },
+        ...TOOL_SCHEMAS.get_all_feedbacks,
         implementation: getAllFeedbacks,
       },
       {
-        name: "inspect_element",
-        description: "Activate the visual element inspector to let the user select a UI element on the page. The user will click an element and provide feedback about what they want to change. Returns the source code location and user feedback.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            prompt: {
-              type: "string",
-              description: "Message to display to the user while they select an element (e.g., 'Please click the button you want to modify')",
-              default: "Please select an element on the page",
-            },
-          },
-        },
+        ...TOOL_SCHEMAS.inspect_element,
         implementation: inspectElement,
       },
       {
-        name: "update_feedback_status",
-        description: "Update the status of the current feedback item in the user's queue. Use this to show progress or mark completion.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            feedbackId: {
-              type: "string",
-              description: "Optional feedback ID. If not provided, will use the most recent loading feedback or the one from session.",
-            },
-            status: {
-              type: "string",
-              enum: ["in-progress", "completed", "failed"],
-              description: "Current status: 'in-progress' for updates, 'completed' when done, 'failed' on error",
-            },
-            progress: {
-              type: "object",
-              properties: {
-                steps: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      id: { type: "number" },
-                      title: { type: "string" },
-                      status: {
-                        type: "string",
-                        enum: ["pending", "in-progress", "completed", "failed"],
-                      },
-                    },
-                    required: ["id", "title", "status"],
-                  },
-                },
-              },
-              description: "Optional progress info with step-by-step details",
-            },
-            message: {
-              type: "string",
-              description: "Status message or completion summary. REQUIRED when status is 'completed' or 'failed'",
-            },
-          },
-          required: ["status"],
-        },
+        ...TOOL_SCHEMAS.update_feedback_status,
         implementation: updateFeedbackStatus,
       },
     ]);

@@ -9,6 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { TOOL_SCHEMAS } from "./tool-schemas.js";
 
 /**
  * Get Chrome DevTools binary path from npm package, then use node to run it, faster/stabler than npx
@@ -77,28 +78,40 @@ export async function createInspectorMcpServer() {
           "A tool for inspecting and interacting with the development environment.",
       },
       { capabilities: { tools: {}, sampling: {}, prompts: {} } },
+    ],
+    [
+      {
+        name: "inspector",
+        description: `Open chrome with devtools connected, to inspect the development environment with network and performance tools.`,
+        options: {
+          refs: ['<tool name="chrome.__ALL__"/>'],
+        },
+        deps: {
+          mcpServers: {
+            chrome: {
+              transportType: "stdio",
+              command: "node",
+              args: [getChromeDevToolsBinPath()],
+            },
+          },
+        },
+      },
     ]
-    // [
-    //   {
-    //     name: "inspector",
-    //     description: `Open chrome with devtools connected, to inspect the development environment with network and performance tools.`,
-    //     options: {
-    //       refs: ['<tool name="chrome.__ALL__"/>'],
-    //     },
-    //     deps: {
-    //       mcpServers: {
-    //         chrome: {
-    //           transportType: "stdio",
-    //           command: "node",
-    //           args: [getChromeDevToolsBinPath()],
-    //         },
-    //       },
-    //     },
-    //   },
-    // ]
   );
 
   const mcpClientExecServer = createClientExecServer(mcpServer, "inspector");
+
+  mcpClientExecServer.registerClientToolSchemas([
+    {
+      ...TOOL_SCHEMAS.inspect_element,
+    },
+    {
+      ...TOOL_SCHEMAS.get_all_feedbacks,
+    },
+    {
+      ...TOOL_SCHEMAS.update_feedback_status,
+    },
+  ])
 
   // Prompts
   mcpServer.setRequestHandler(ListPromptsRequestSchema, async (request) => {

@@ -34,20 +34,28 @@ export default defineConfig({
           fs.mkdirSync('client/dist', { recursive: true });
         }
         
-        // Write the processed CSS
+        // Write the processed CSS as a JS module
+        const cssJs = `export default ${JSON.stringify(result.css)};`;
+        fs.writeFileSync('client/dist/inspector-styles.js', cssJs);
+        
+        // Also write the CSS file for reference
         fs.writeFileSync('client/dist/inspector.css', result.css);
       },
       resolveId(id) {
-        // Stub out CSS imports
-        if (id.endsWith('.css')) {
-          return { id: '\0css-stub', moduleSideEffects: false };
+        // Redirect CSS imports to our generated JS module
+        if (id.endsWith('styles.css')) {
+          return { id: '\0virtual:styles', moduleSideEffects: false };
         }
         return null;
       },
       load(id) {
-        // Return empty module for CSS stubs
-        if (id === '\0css-stub') {
-          return '// CSS processed separately';
+        // Return the CSS as a JS module
+        if (id === '\0virtual:styles') {
+          const cssPath = 'client/dist/inspector-styles.js';
+          if (fs.existsSync(cssPath)) {
+            return fs.readFileSync(cssPath, 'utf-8');
+          }
+          return 'export default "";';
         }
         return null;
       },

@@ -1,19 +1,28 @@
-import './styles.css';
-import React, { useState, useRef, useEffect } from 'react';
+import inspectorStyles from './styles.css';
+import React, { useState, useRef, useEffect, createContext, useContext } from 'react';
 import ReactDOM from 'react-dom/client';
 import type { InspectedElement } from './types';
 import { Notification } from './components/Notification';
 import { FeedbackBubble } from './components/FeedbackBubble';
 import { FeedbackCart, type FeedbackItem } from './components/FeedbackCart';
 import { InspectorButton } from './components/InspectorButton';
+import { AcpAgentButton } from './components/AcpAgentButton';
+import AcpAgent from './components/AcpAgent';
 import { Overlay, Tooltip } from './components/Overlays';
 import { useNotification } from './hooks/useNotification';
 import { useInspectorHover } from './hooks/useInspectorHover';
 import { useInspectorClick } from './hooks/useInspectorClick';
 import { useMcp } from './hooks/useMcp';
-import { ThemeProvider } from 'next-themes';
+import { ThemeProvider, useTheme } from 'next-themes';
 import { Toaster } from './components/ui/sonner';
 import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover';
+import { cn } from './lib/utils';
+
+// Context for Portal components
+const InspectorContainerContext = createContext<HTMLElement | ShadowRoot | null>(null);
+export const useInspectorContainer = () => useContext(InspectorContainerContext);
+// Alias for backward compatibility with existing components
+export const useShadowRoot = useInspectorContainer;
 
 const STORAGE_KEY = 'inspector-feedback-items';
 
@@ -35,14 +44,21 @@ function saveFeedbackItems(items: FeedbackItem[]) {
   }
 }
 
-const InspectorContainer: React.FC = () => {
+interface InspectorContainerProps {
+  shadowRoot?: ShadowRoot;
+}
+
+const InspectorContainer: React.FC<InspectorContainerProps> = ({ shadowRoot }) => {
   useMcp();
+  const { resolvedTheme } = useTheme();
+  const [container, setContainer] = useState<HTMLElement | null>(null);
   
   const [isActive, setIsActive] = useState(false);
   const [sourceInfo, setSourceInfo] = useState<InspectedElement | null>(null);
   const [bubbleMode, setBubbleMode] = useState<'input' | null>(null);
   const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>(loadFeedbackItems);
   const [showCart, setShowCart] = useState(false);
+  const [showAgentPanel, setShowAgentPanel] = useState(false);
 
   const btnRef = useRef<HTMLButtonElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -155,9 +171,13 @@ const InspectorContainer: React.FC = () => {
     btnRef.current?.classList.toggle('active', newActive);
     document.body.style.cursor = newActive ? 'crosshair' : '';
 
-    if (!newActive) {
+    if (newActive) {
+      setShowAgentPanel(false);
+      setBubbleMode(null);
+    } else {
       if (overlayRef.current) overlayRef.current.style.display = 'none';
       if (tooltipRef.current) tooltipRef.current.style.display = 'none';
+      setBubbleMode(null);
     }
 
     showNotif(newActive ? '🔍 Inspector ON - Click any element' : '✅ Inspector OFF');
@@ -204,6 +224,24 @@ const InspectorContainer: React.FC = () => {
     window.dispatchEvent(new CustomEvent('inspector-cancelled'));
   };
 
+  const toggleAgentPanel = () => {
+    const next = !showAgentPanel;
+    setShowAgentPanel(next);
+
+    if (next) {
+      setIsActive(false);
+      setBubbleMode(null);
+      btnRef.current?.classList.remove('active');
+      document.body.style.cursor = '';
+      if (overlayRef.current) overlayRef.current.style.display = 'none';
+      if (tooltipRef.current) tooltipRef.current.style.display = 'none';
+    }
+  };
+
+  const handleAgentClose = () => {
+    setShowAgentPanel(false);
+  };
+
   const handleRemoveFeedback = (id: string) => {
     setFeedbackItems(prev => prev.filter(item => item.id !== id));
   };
@@ -218,79 +256,122 @@ const InspectorContainer: React.FC = () => {
   };
 
   return (
-    <>
-      <div
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
-        <Popover open={showCart && feedbackItems.length > 0} onOpenChange={setShowCart}>
-          <PopoverTrigger asChild>
-            <InspectorButton 
-              ref={btnRef} 
-              isActive={isActive} 
-              onClick={toggleInspector}
-              feedbackCount={feedbackItems.length}
-            />
-          </PopoverTrigger>
-          <PopoverContent 
-            className="w-80 p-0" 
-            side="top" 
-            align="center"
-            sideOffset={4}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
-          >
-            <FeedbackCart
-              items={feedbackItems}
-              onRemove={handleRemoveFeedback}
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
-      <Overlay ref={overlayRef} visible={isActive && bubbleMode === null} />
-      <Tooltip ref={tooltipRef} visible={isActive && bubbleMode === null} />
-
-      {notification && <Notification message={notification} />}
-
-      {bubbleMode && sourceInfo && (
-        <FeedbackBubble
-          sourceInfo={sourceInfo}
-          mode={bubbleMode}
-          onSubmit={handleFeedbackSubmit}
-          onClose={handleBubbleClose}
-        />
+    <div 
+      ref={setContainer} 
+      className={cn(
+        "font-sans antialiased w-full h-full pointer-events-none fixed inset-0", 
+        resolvedTheme === 'dark' && 'dark'
       )}
-      
-      <Toaster />
-    </>
+    >
+      <InspectorContainerContext.Provider value={container || shadowRoot || null}>
+        <div
+          className="fixed bottom-20 right-5 flex flex-col gap-2 items-end z-[999999] pointer-events-auto"
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          <Popover open={showCart && feedbackItems.length > 0} onOpenChange={setShowCart}>
+            <PopoverTrigger asChild>
+              <InspectorButton 
+                ref={btnRef} 
+                isActive={isActive} 
+                onClick={toggleInspector}
+                feedbackCount={feedbackItems.length}
+              />
+            </PopoverTrigger>
+            <PopoverContent 
+              className="w-80 p-0" 
+              side="top" 
+              align="center"
+              sideOffset={4}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              <FeedbackCart
+                items={feedbackItems}
+                onRemove={handleRemoveFeedback}
+              />
+            </PopoverContent>
+          </Popover>
+          
+          <AcpAgentButton
+            isActive={showAgentPanel}
+            onClick={toggleAgentPanel}
+          />
+        </div>
+        <Overlay ref={overlayRef} visible={isActive && bubbleMode === null} />
+        <Tooltip ref={tooltipRef} visible={isActive && bubbleMode === null} />
+
+        {notification && <Notification message={notification} />}
+
+        {bubbleMode && sourceInfo && (
+          <div className="pointer-events-auto">
+            <FeedbackBubble
+              sourceInfo={sourceInfo}
+              mode={bubbleMode}
+              onSubmit={handleFeedbackSubmit}
+              onClose={handleBubbleClose}
+            />
+          </div>
+        )}
+
+        {showAgentPanel && (
+          <div className="fixed inset-0 bg-black/50 z-[999998] flex items-center justify-center p-4 pointer-events-auto" onClick={handleAgentClose}>
+            <div 
+              className="bg-background rounded-lg shadow-2xl w-full max-w-4xl h-full max-h-[85vh] flex flex-col overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
+                <h2 className="text-lg font-semibold">AI Agent</h2>
+                <button
+                  onClick={handleAgentClose}
+                  className="rounded-md p-2 hover:bg-accent transition-colors"
+                  aria-label="Close"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="flex-1 min-h-0 p-4">
+                <AcpAgent />
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <Toaster />
+      </InspectorContainerContext.Provider>
+    </div>
   );
 };
 
 // Initialize
-export function initInspector(): void {
-  const INSPECTOR_ID = 'source-inspector-plugin-v1';
-  if ((window as any)[INSPECTOR_ID]) return;
-  (window as any)[INSPECTOR_ID] = true;
+class DevInspector extends HTMLElement {
+  connectedCallback() {
+    const shadowRoot = this.attachShadow({ mode: 'open' });
+    
+    // Inject styles into Shadow DOM
+    const styleElement = document.createElement('style');
+    styleElement.textContent = inspectorStyles;
+    shadowRoot.appendChild(styleElement);
+    
+    // Create mount point for React inside Shadow DOM
+    const mountPoint = document.createElement('div');
+    shadowRoot.appendChild(mountPoint);
 
-  const root = document.createElement('div');
-  root.id = 'source-inspector-root';
-  document.body.appendChild(root);
-
-  const reactRoot = ReactDOM.createRoot(root);
-  reactRoot.render(
-    React.createElement(ThemeProvider, { 
-      attribute: 'class',
-      defaultTheme: 'system',
-      enableSystem: true,
-      storageKey: 'inspector-theme',
-    }, React.createElement(InspectorContainer))
-  );
+    // Render React app inside Shadow DOM with ShadowRoot context
+    const reactRoot = ReactDOM.createRoot(mountPoint);
+    reactRoot.render(
+      React.createElement(ThemeProvider, { 
+        attribute: 'class',
+        defaultTheme: 'system',
+        enableSystem: true,
+        storageKey: 'inspector-theme',
+      }, React.createElement(InspectorContainer, { shadowRoot }))
+    );
+  }
 }
 
-if (typeof document !== 'undefined') {
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initInspector);
-  } else {
-    initInspector();
-  }
+if (!customElements.get('dev-inspector')) {
+  customElements.define('dev-inspector', DevInspector);
 }

@@ -1,6 +1,7 @@
 import { createUnplugin } from "unplugin";
 import { setupMcpMiddleware } from "./middleware/mcproute-middleware";
 import { setupInspectorMiddleware } from "./middleware/inspector-middleware";
+import { setupAcpMiddleware } from "./middleware/acp-middleware";
 import { transformJSX } from "./compiler/jsx-transform";
 
 export interface DevInspectorOptions {
@@ -55,14 +56,10 @@ export const unplugin = createUnplugin<DevInspectorOptions | undefined>(
         apply: "serve",
 
         transformIndexHtml(html) {
-          // Inject inspector CSS and client script
-          const injectedHead = html.replace(
-            "</head>",
-            `<link rel="stylesheet" href="/__inspector__/inspector.css"></head>`
-          );
-          return injectedHead.replace(
+          // Inject inspector client script and element
+          return html.replace(
             "</body>",
-            `<script src="/__inspector__/inspector.iife.js"></script></body>`
+            `<dev-inspector></dev-inspector><script src="/__inspector__/inspector.iife.js"></script></body>`
           );
         },
 
@@ -72,6 +69,7 @@ export const unplugin = createUnplugin<DevInspectorOptions | undefined>(
 
           if (enableMcp) {
             await setupMcpMiddleware(server.middlewares);
+            setupAcpMiddleware(server.middlewares);
           }
           setupInspectorMiddleware(server.middlewares);
         },

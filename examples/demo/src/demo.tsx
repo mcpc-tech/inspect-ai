@@ -15,7 +15,7 @@ import {
   type EnhancedNetworkRequest 
 } from './interceptor';
 
-// Initialize interceptors using PerformanceObserver (non-invasive)
+// Initialize interceptors by patching native fetch/XHR methods.
 // initInterceptors();
 
 const POLL_MS = 1500;
