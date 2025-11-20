@@ -13,10 +13,12 @@ import { useNotification } from './hooks/useNotification';
 import { useInspectorHover } from './hooks/useInspectorHover';
 import { useInspectorClick } from './hooks/useInspectorClick';
 import { useMcp } from './hooks/useMcp';
-import { ThemeProvider, useTheme } from 'next-themes';
 import { Toaster } from './components/ui/sonner';
 import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover';
 import { cn } from './lib/utils';
+import { InspectorThemeProvider, useInspectorTheme } from './context/ThemeContext';
+
+// --- Inspector Container ---
 
 // Context for Portal components
 const InspectorContainerContext = createContext<HTMLElement | ShadowRoot | null>(null);
@@ -50,7 +52,7 @@ interface InspectorContainerProps {
 
 const InspectorContainer: React.FC<InspectorContainerProps> = ({ shadowRoot }) => {
   useMcp();
-  const { resolvedTheme } = useTheme();
+  const { resolvedTheme } = useInspectorTheme();
   const [container, setContainer] = useState<HTMLElement | null>(null);
   
   const [isActive, setIsActive] = useState(false);
@@ -361,12 +363,9 @@ class DevInspector extends HTMLElement {
     // Render React app inside Shadow DOM with ShadowRoot context
     const reactRoot = ReactDOM.createRoot(mountPoint);
     reactRoot.render(
-      React.createElement(ThemeProvider, { 
-        attribute: 'class',
-        defaultTheme: 'system',
-        enableSystem: true,
-        storageKey: 'inspector-theme',
-      }, React.createElement(InspectorContainer, { shadowRoot }))
+      React.createElement(InspectorThemeProvider, null, 
+        React.createElement(InspectorContainer, { shadowRoot })
+      )
     );
   }
 }
@@ -374,3 +373,4 @@ class DevInspector extends HTMLElement {
 if (!customElements.get('dev-inspector')) {
   customElements.define('dev-inspector', DevInspector);
 }
+
