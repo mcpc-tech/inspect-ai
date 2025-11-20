@@ -315,16 +315,15 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({ shadowRoot }) =
         )}
 
         {showAgentPanel && (
-          <div className="fixed inset-0 bg-black/50 z-[999998] flex items-center justify-center p-4 pointer-events-auto" onClick={handleAgentClose}>
+          <div className="fixed bottom-20 right-20 w-[500px] h-[600px] z-[999998] pointer-events-auto">
             <div 
-              className="bg-background rounded-lg shadow-2xl w-full max-w-4xl h-full max-h-[85vh] flex flex-col overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
+              className="bg-background rounded-lg shadow-2xl w-full h-full flex flex-col overflow-hidden border border-border"
             >
-              <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
-                <h2 className="text-lg font-semibold">AI Agent</h2>
+              <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0 bg-muted/30">
+                <h2 className="text-base font-semibold">AI Agent</h2>
                 <button
                   onClick={handleAgentClose}
-                  className="rounded-md p-2 hover:bg-accent transition-colors"
+                  className="rounded-md p-1.5 hover:bg-accent transition-colors"
                   aria-label="Close"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

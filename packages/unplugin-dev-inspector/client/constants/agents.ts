@@ -17,7 +17,7 @@ export const AVAILABLE_AGENTS: Agent[] = [
     name: "Claude Code",
     command: "claude-code-acp",
     env: [
-      { key: "ANTHROPIC_API_KEY", required: true },
+      { key: "ANTHROPIC_API_KEY", required: false },
       { key: "ANTHROPIC_BASE_URL", required: false },
     ],
     meta: {

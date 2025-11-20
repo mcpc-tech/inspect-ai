@@ -50,7 +50,7 @@ const ACPAgent = ({ sourceInfo, onClose }: ACPAgentProps = {}) => {
     AVAILABLE_AGENTS[0];
 
   // Prepare agent-scoped env state for the settings dialog
-  const requiredKeys = currentAgent.env.map((e) => e.key);
+  const requiredKeys = currentAgent.env.filter((e) => e.key && e.required).map((e) => e.key);
   const { envVars, setEnvVar } = useAgentEnv(
     currentAgent.command,
     requiredKeys

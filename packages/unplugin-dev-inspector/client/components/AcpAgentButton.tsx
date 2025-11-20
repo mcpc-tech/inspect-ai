@@ -19,13 +19,13 @@ export const AcpAgentButton = React.forwardRef<HTMLButtonElement, AcpAgentButton
       onMouseLeave={onMouseLeave}
       title="Toggle AI Agent Panel"
       className={cn(
-        "w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 border-0 cursor-pointer shadow-lg z-[999998]",
+        "w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-700 border-0 cursor-pointer shadow-lg z-[999998]",
         "flex items-center justify-center transition-all duration-300 ease-out outline-none",
-        "hover:scale-110 hover:shadow-xl",
-        isActive && "scale-110 shadow-xl"
+        "hover:scale-110 hover:shadow-xl hover:from-purple-700 hover:via-purple-800 hover:to-indigo-800",
+        isActive && "scale-110 shadow-xl from-purple-700 via-purple-800 to-indigo-800"
       )}
     >
-      <Bot className="w-6 h-6 text-white" />
+      <Bot className="w-5 h-5 text-white" />
     </button>
   ),
 );

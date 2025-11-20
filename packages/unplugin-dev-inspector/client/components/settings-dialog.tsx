@@ -70,17 +70,19 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     setIsOpen(false);
   };
 
-  const hasAnyKey =
-    Object.values(values).some((v) => (v ?? "").trim().length > 0) ||
-    apiKey.trim().length > 0;
+  // Check if any required keys are missing
+  const hasAllRequiredKeys =
+    requiredKeyNames.length === 0 ||
+    requiredKeyNames.every((k) => (values[k] ?? "").trim().length > 0) ||
+    (requiredKeyNames.length === 1 && apiKey.trim().length > 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button
-          variant={hasAnyKey ? "outline" : "destructive"}
+          variant={hasAllRequiredKeys ? "outline" : "destructive"}
           size="sm"
-          className={!hasAnyKey ? "animate-pulse" : ""}
+          className={!hasAllRequiredKeys ? "animate-pulse" : ""}
         >
           <Settings className="h-4 w-4" />
         </Button>
