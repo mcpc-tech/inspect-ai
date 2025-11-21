@@ -36,7 +36,7 @@ export const InspectorBar = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
 
-  // --- Message Processing Logic (from AgentPreviewBar) ---
+  // --- Message Processing Logic ---
   useEffect(() => {
     if (messages.length > 0) {
       const last = messages[messages.length - 1];
