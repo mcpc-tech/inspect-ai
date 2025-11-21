@@ -4,6 +4,7 @@ import { streamText, convertToModelMessages } from "ai";
 import { createACPProvider } from "@mcpc-tech/acp-ai-provider";
 import { planEntrySchema } from "@agentclientprotocol/sdk";
 import { z } from "zod";
+import { resolveMcpRemote } from "../utils/resolve-bin";
 
 export function setupAcpMiddleware(middlewares: Connect.Server) {
   middlewares.use(
@@ -19,20 +20,28 @@ export function setupAcpMiddleware(middlewares: Connect.Server) {
         const body = await readBody(req);
         const { messages, agent, envVars } = JSON.parse(body);
 
-        console.log("ACP Agent Command:", agent);
+        const cwd = process.cwd();
+        const mcpRemote = resolveMcpRemote(cwd);
+
+        console.log("ACP Agent Command:", { agent, envVars, mcpRemote });
 
         const provider = createACPProvider({
           command: agent.command,
           args: agent.args,
           env: envVars,
           session: {
-            cwd: process.cwd(),
+            cwd,
+            // All Agents MUST support the stdio transport, while HTTP and SSE transports are optional capabilities that can be checked during initialization, we use mcp-remote to support it
+            // See https://agentclientprotocol.com/protocol/session-setup#mcp-servers
             mcpServers: [
               {
-                url: "http://localhost:5173/__mcp__/sse?puppetId=chrome",
-                type: "sse" as const,
-                headers: [],
-                name: "inspect"
+                command: mcpRemote.command,
+                args: [
+                  ...mcpRemote.args,
+                  "http://localhost:5173/__mcp__/sse?puppetId=chrome",
+                ],
+                env: [],
+                name: "inspect",
               },
             ],
           },
@@ -48,7 +57,10 @@ export function setupAcpMiddleware(middlewares: Connect.Server) {
           //   // console.log("Streamed chunk:", chunk);
           // },
           onError: (error) => {
-            console.error("Error occurred while streaming text:", error);
+            console.error(
+              "Error occurred while streaming text:",
+              JSON.stringify(error, null, 2)
+            );
           },
           tools: provider.tools,
         });

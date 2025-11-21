@@ -139,8 +139,8 @@ const ACPAgent = ({ sourceInfo, onClose }: ACPAgentProps = {}) => {
                 <PromptInputModelSelectContent>
                   {AVAILABLE_AGENTS.map((agentOption: Agent) => (
                     <PromptInputModelSelectItem
-                      key={agentOption.command}
-                      value={agentOption.command}
+                      key={agentOption.name}
+                      value={agentOption.name}
                     >
                       {agentOption.name}
                     </PromptInputModelSelectItem>

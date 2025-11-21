@@ -82,8 +82,8 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "lucide-react": "^0.546.0",
+    "mcp-remote": "^0.1.31",
     "nanoid": "^5.1.6",
-
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-remove-scroll": "^2.7.1",

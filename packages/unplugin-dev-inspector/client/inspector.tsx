@@ -131,7 +131,7 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({
         elementInfo: sourceInfo.elementInfo,
       },
       feedback,
-      status: "loading",
+      status: "pending",
       timestamp: Date.now(),
     };
 
@@ -140,25 +140,7 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({
     setIsActive(false);
     document.body.style.cursor = "";
 
-    const cleanSourceInfo = {
-      file: sourceInfo.file,
-      component: sourceInfo.component,
-      line: sourceInfo.line,
-      column: sourceInfo.column,
-      elementInfo: sourceInfo.elementInfo,
-    };
-    const prompt = `Context: ${JSON.stringify(cleanSourceInfo, null, 2)}\n\nRequest: ${feedback}`;
-    const currentAgent = AVAILABLE_AGENTS.find((a) => a.command === DEFAULT_AGENT) || AVAILABLE_AGENTS[0];
-
-    sendMessage(
-      { text: prompt },
-      {
-        body: {
-          agent: currentAgent,
-          envVars: {},
-        },
-      }
-    );
+    showNotif("✅ Feedback saved");
   };
 
   const handleBubbleClose = () => {
@@ -171,7 +153,7 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({
   };
 
   const handleAgentSubmit = (query: string) => {
-    const currentAgent = AVAILABLE_AGENTS.find((a) => a.command === DEFAULT_AGENT) || AVAILABLE_AGENTS[0];
+    const currentAgent = AVAILABLE_AGENTS.find((a) => a.name === DEFAULT_AGENT) || AVAILABLE_AGENTS[0];
     sendMessage(
       { text: query },
       {

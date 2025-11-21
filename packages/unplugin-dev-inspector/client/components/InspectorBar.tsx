@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import { Eye, Sparkles, ArrowRight, Terminal, CheckCircle2, XCircle } from 'lucide-react';
-import type { UIMessage, UIMessagePart, UITool } from 'ai';
-
-
+import type { UIMessage } from 'ai';
+import { processMessage, extractToolName } from '../utils/messageProcessor';
 
 interface InspectorBarProps {
   isActive: boolean;
@@ -28,7 +27,8 @@ export const InspectorBar = ({
   const [input, setInput] = useState('');
   const [displayText, setDisplayText] = useState<string>('');
   const [toolCall, setToolCall] = useState<string | null>(null);
-  const [textOffset, setTextOffset] = useState(0);
+  const [toolResult, setToolResult] = useState<string | null>(null);
+  const [shouldMarquee, setShouldMarquee] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -38,70 +38,36 @@ export const InspectorBar = ({
     if (messages.length === 0) return;
 
     const last = messages[messages.length - 1];
-    let text = '';
     let currentTool: string | null = null;
-
-    const extractToolName = (msg: UIMessage): string | null => {
-      if (!msg.parts) return null;
-
-      for (const part of msg.parts) {
-        if (part.type === 'tool-call' && 'toolName' in part && typeof part.toolName === 'string') {
-          return part.toolName;
-        }
-        if (part.type === 'tool-acp.acp_provider_agent_dynamic_tool' && 'input' in part && typeof part.input === 'object' && part.input !== null && 'toolName' in part.input) {
-          // @ts-ignore - Custom structure handling
-          return part.input.toolName;
-        }
-      }
-      return null;
-    };
 
     currentTool = extractToolName(last);
     if (!currentTool && messages.length > 1) {
       currentTool = extractToolName(messages[messages.length - 2]);
     }
 
-    if ('parts' in last && Array.isArray(last.parts)) {
-      for (const part of last.parts) {
-        const messagePart = part as UIMessagePart<Record<string, unknown>, Record<string, UITool>>;
-        if (messagePart.type === 'text' && 'text' in messagePart && typeof messagePart.text === 'string') {
-          text += messagePart.text;
-        }
-      }
-    } else if ('content' in last && typeof last.content === 'string') {
-      text = last.content;
-    } else if ('text' in last && typeof last.text === 'string') {
-      text = last.text;
-    }
+    // Process message using utility functions
+    const { displayText, toolOutput, toolCall: extractedToolCall } = processMessage(last, currentTool);
 
-    setDisplayText(text);
-
-    if (currentTool) {
-      setToolCall(currentTool);
-    } else if ('toolInvocations' in last && Array.isArray(last.toolInvocations) && last.toolInvocations.length > 0) {
-      const lastTool = last.toolInvocations[last.toolInvocations.length - 1];
-      if (typeof lastTool === 'object' && lastTool !== null && 'toolName' in lastTool && typeof lastTool.toolName === 'string') {
-        setToolCall(lastTool.toolName);
-      }
-    } else {
-      setToolCall(null);
-    }
+    setDisplayText(displayText);
+    
+    // Update tool result and tool call
+    // If there's no tool output in the new message, clear the previous tool result
+    // This allows new text messages to be displayed
+    setToolResult(toolOutput);
+    setToolCall(extractedToolCall);
   }, [messages]);
 
+  // Check if text needs marquee effect
   useEffect(() => {
-    if (!displayText || displayText.length <= 50) {
-      setTextOffset(0);
+    if (!textRef.current || !displayText) {
+      setShouldMarquee(false);
       return;
     }
 
-    const interval = setInterval(() => {
-      setTextOffset(prev => {
-        const maxOffset = displayText.length - 40;
-        return prev + 20 > maxOffset ? 0 : prev + 20;
-      });
-    }, 3000);
-
-    return () => clearInterval(interval);
+    // Check if text is longer than container
+    const textWidth = textRef.current.scrollWidth;
+    const containerWidth = textRef.current.clientWidth;
+    setShouldMarquee(textWidth > containerWidth);
   }, [displayText]);
 
   // --- End Message Processing Logic ---
@@ -161,18 +127,15 @@ export const InspectorBar = ({
           "flex items-center gap-3 transition-opacity duration-300",
           isExpanded ? "absolute left-3 opacity-0 pointer-events-none" : "relative opacity-100"
         )}>
-          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 dark:bg-black/5 flex-shrink-0">
-            <Sparkles className="w-4 h-4 text-white dark:text-black" />
-          </div>
-          <span className="text-sm font-medium text-white dark:text-black whitespace-nowrap">
-            FeedWeb AI
-          </span>
+          {!showMessage && (
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 dark:bg-black/5 flex-shrink-0">
+              <Sparkles className="w-4 h-4 text-white dark:text-black" />
+            </div>
+          )}
 
           {showMessage && (
             <>
-              <div className="w-px h-6 bg-white/20 dark:bg-black/10 flex-shrink-0" />
-
-              <div className="relative flex items-center justify-center w-6 h-6 flex-shrink-0">
+              <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-white/10 dark:bg-black/5 flex-shrink-0">
                 {isAgentWorking ? (
                   <>
                     <div className="absolute inset-0 rounded-full border-2 border-current opacity-20 animate-ping text-white dark:text-black" />
@@ -185,28 +148,38 @@ export const InspectorBar = ({
                 )}
               </div>
 
+              <div className="w-px h-6 bg-white/20 dark:bg-black/10 flex-shrink-0" />
+
               <div className="flex flex-col min-w-[100px] max-w-[300px] pr-2">
-                {toolCall ? (
+                {toolResult ? (
+                  <div className="text-sm font-medium leading-tight truncate text-green-400 dark:text-green-600">
+                    <span className="truncate">{toolResult.length > 50 ? toolResult.substring(0, 50) + '...' : toolResult}</span>
+                  </div>
+                ) : toolCall ? (
                   <div className="flex items-center gap-1.5 text-sm font-medium text-white dark:text-black">
                     <Terminal className="w-4 h-4" />
                     <span className="truncate">{toolCall}</span>
                   </div>
                 ) : (
-                  <div
-                    ref={textRef}
-                    className="text-sm font-medium leading-tight truncate text-white dark:text-black"
-                  >
-                    {displayText ? (
-                      displayText.length > 50 ? (
-                        <span key={textOffset}>
-                          {displayText.substring(textOffset, textOffset + 50)}
-                          {textOffset + 50 < displayText.length && '...'}
-                        </span>
-                      ) : (
-                        displayText
-                      )
+                  <div className="relative overflow-hidden w-[300px]">
+                    {shouldMarquee ? (
+                      <div className="relative w-full overflow-hidden">
+                        <div
+                          ref={textRef}
+                          className="inline-block text-sm font-medium leading-tight text-white dark:text-black whitespace-nowrap animate-marquee"
+                        >
+                          {displayText}
+                          <span className="mx-8">•</span>
+                          {displayText}
+                        </div>
+                      </div>
                     ) : (
-                      isAgentWorking ? "Thinking..." : "Ready"
+                      <div
+                        ref={textRef}
+                        className="text-sm font-medium leading-tight text-white dark:text-black whitespace-nowrap truncate"
+                      >
+                        {displayText || (isAgentWorking ? "Thinking..." : "Ready")}
+                      </div>
                     )}
                   </div>
                 )}
