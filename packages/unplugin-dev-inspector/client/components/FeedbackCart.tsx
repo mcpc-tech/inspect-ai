@@ -40,21 +40,20 @@ export const FeedbackCart: React.FC<FeedbackCartProps> = ({ items, onRemove }) =
   if (items.length === 0) return null;
 
   const getStatusIcon = (status: FeedbackStatus) => {
-    const icons = {
-      loading: <Loader2 className="h-4 w-4 animate-spin text-blue-500" />,
-      success: <CheckCircle2 className="h-4 w-4 text-green-500" />,
-      error: <XCircle className="h-4 w-4 text-red-500" />,
-      pending: <div className="h-4 w-4 rounded-full border-2 border-gray-400" />
-    };
-    return icons[status];
+    if (status === 'loading') return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
+    if (status === 'success') return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+    if (status === 'error') return <XCircle className="h-4 w-4 text-red-500" />;
+    return <div className="h-4 w-4 rounded-full border-2 border-gray-400" />;
   };
 
   const getStatusText = (item: FeedbackItem) => {
     if (item.status === 'loading' && item.progress) {
       return `Processing... ${item.progress.completed}/${item.progress.total}`;
     }
-    const statusMap = { success: 'Completed', error: 'Failed', pending: 'Pending', loading: 'Processing' };
-    return statusMap[item.status];
+    if (item.status === 'success') return 'Completed';
+    if (item.status === 'error') return 'Failed';
+    if (item.status === 'loading') return 'Processing';
+    return 'Pending';
   };
 
   return (

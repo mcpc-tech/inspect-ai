@@ -6,9 +6,7 @@ type UIMessagePart<TMeta = Record<string, unknown>, TToolMap = Record<string, UI
   | { type: "reasoning"; text: string; state?: string; providerMetadata?: TMeta }
   | (Record<string, unknown> & { type: string; state?: string });
 
-function isToolPart(
-  part: unknown
-): part is Record<string, unknown> & { type: string; state?: string } {
+function isToolPart(part: unknown): part is Record<string, unknown> & { type: string; state?: string } {
   const p = part as Record<string, unknown>;
   return typeof p?.type === "string" && p.type.startsWith("tool-");
 }
@@ -37,7 +35,6 @@ export function renderMessagePart(
     );
   }
 
-  // Optional simple plan renderer from metadata
   const plan = metadata?.plan as Array<Record<string, unknown>> | undefined;
   if (plan && index === 0) {
     return (

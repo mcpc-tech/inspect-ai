@@ -17,16 +17,11 @@ export function usePlanProgress() {
   useEffect(() => {
     function handlePlanProgress(event: Event) {
       const customEvent = event as CustomEvent;
-      const { plan } = customEvent.detail;
-      console.log("📊 Plan progress received:", plan);
-      setPlan(plan);
+      setPlan(customEvent.detail.plan);
     }
 
     window.addEventListener("plan-progress-reported", handlePlanProgress as EventListener);
-
-    return () => {
-      window.removeEventListener("plan-progress-reported", handlePlanProgress as EventListener);
-    };
+    return () => window.removeEventListener("plan-progress-reported", handlePlanProgress as EventListener);
   }, []);
 
   return plan;

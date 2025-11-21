@@ -23,31 +23,17 @@ interface PlanProgressProps {
 }
 
 const getStatusIcon = (status: string) => {
-  switch (status) {
-    case "completed":
-      return <CheckCircle2 className="size-4 text-green-500" />;
-    case "in-progress":
-      return <Loader className="size-4 text-blue-500 animate-spin" />;
-    case "failed":
-      return <AlertCircle className="size-4 text-red-500" />;
-    case "pending":
-    default:
-      return <Circle className="size-4 text-gray-400" />;
-  }
+  if (status === "completed") return <CheckCircle2 className="size-4 text-green-500" />;
+  if (status === "in-progress") return <Loader className="size-4 text-blue-500 animate-spin" />;
+  if (status === "failed") return <AlertCircle className="size-4 text-red-500" />;
+  return <Circle className="size-4 text-gray-400" />;
 };
 
 const getStatusText = (status: string) => {
-  switch (status) {
-    case "completed":
-      return "Completed";
-    case "in-progress":
-      return "In Progress";
-    case "failed":
-      return "Failed";
-    case "pending":
-    default:
-      return "Pending";
-  }
+  if (status === "completed") return "Completed";
+  if (status === "in-progress") return "In Progress";
+  if (status === "failed") return "Failed";
+  return "Pending";
 };
 
 export function PlanProgress({ plan }: PlanProgressProps) {

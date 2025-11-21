@@ -39,22 +39,11 @@ interface ACPAgentProps {
 
 const ACPAgent = ({ sourceInfo, onClose }: ACPAgentProps = {}) => {
   const [input, setInput] = useState("");
-  // Persist selected agent using useAgent hook
-  const { agent: selectedAgent, setAgent: setSelectedAgent } =
-    useAgent(DEFAULT_AGENT);
-  // no global apiKey: use per-agent env vars instead
+  const { agent: selectedAgent, setAgent: setSelectedAgent } = useAgent(DEFAULT_AGENT);
 
-  // Get the selected agent object
-  const currentAgent: Agent =
-    AVAILABLE_AGENTS.find((agent: Agent) => agent.command === selectedAgent) ||
-    AVAILABLE_AGENTS[0];
-
-  // Prepare agent-scoped env state for the settings dialog
+  const currentAgent = AVAILABLE_AGENTS.find((agent) => agent.command === selectedAgent) || AVAILABLE_AGENTS[0];
   const requiredKeys = currentAgent.env.filter((e) => e.key && e.required).map((e) => e.key);
-  const { envVars, setEnvVar } = useAgentEnv(
-    currentAgent.command,
-    requiredKeys
-  );
+  const { envVars, setEnvVar } = useAgentEnv(currentAgent.command, requiredKeys);
 
   const selectedAgentRef = useRef(selectedAgent);
 
@@ -70,31 +59,29 @@ const ACPAgent = ({ sourceInfo, onClose }: ACPAgentProps = {}) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim()) {
-      // Ensure all required env keys are present
-      const missing = requiredKeys.filter((k: string) => !(envVars[k] ?? "").trim());
-      if (missing.length) {
-        alert(`Please set required keys: ${missing.join(", ")}`);
-        return;
-      }
+    if (!input.trim()) return;
 
-      // Prepare environment variables based on selected agent
-      const preparedEnv: Record<string, string> = {};
-      currentAgent.env.forEach((envConfig) => {
-        preparedEnv[envConfig.key] = envVars[envConfig.key] ?? "";
-      });
-
-      sendMessage(
-        { text: input },
-        {
-          body: {
-            agent: currentAgent,
-            envVars: preparedEnv,
-          },
-        }
-      );
-      setInput("");
+    const missing = requiredKeys.filter((k) => !envVars[k]?.trim());
+    if (missing.length) {
+      alert(`Please set required keys: ${missing.join(", ")}`);
+      return;
     }
+
+    const preparedEnv: Record<string, string> = {};
+    currentAgent.env.forEach((envConfig) => {
+      preparedEnv[envConfig.key] = envVars[envConfig.key] ?? "";
+    });
+
+    sendMessage(
+      { text: input },
+      {
+        body: {
+          agent: currentAgent,
+          envVars: preparedEnv,
+        },
+      }
+    );
+    setInput("");
   };
 
   return (

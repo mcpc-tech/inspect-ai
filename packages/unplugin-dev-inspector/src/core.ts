@@ -35,16 +35,11 @@ export const unplugin = createUnplugin<DevInspectorOptions | undefined>(
       enforce: "pre",
 
       async transform(code, id) {
-        // Only process JSX/TSX files
         if (!id.match(/\.(jsx|tsx)$/)) return null;
-        
-        // Skip node_modules
         if (id.includes('node_modules')) return null;
 
-        // Use Babel-based JSX transform (following Vue Inspector pattern)
         try {
-          const result = await transformJSX({ code, id });
-          return result;
+          return await transformJSX({ code, id });
         } catch (error) {
           console.error(`[dev-inspector] Failed to transform ${id}:`, error);
           return null;
@@ -64,8 +59,7 @@ export const unplugin = createUnplugin<DevInspectorOptions | undefined>(
         },
 
         async configureServer(server) {
-          console.log("\n✨ Dev Inspector Plugin enabled!");
-          console.log("👁️  Click the floating eye icon to inspect elements\n");
+          console.log("\n\u2728 Dev Inspector Plugin enabled!");
 
           if (enableMcp) {
             await setupMcpMiddleware(server.middlewares);

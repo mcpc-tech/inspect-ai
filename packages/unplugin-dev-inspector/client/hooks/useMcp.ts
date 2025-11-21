@@ -36,10 +36,13 @@ function formatElementInfo(elementInfo: any) {
   if (!elementInfo) return '';
   
   const { tagName, textContent, className, id: elemId, styles } = elementInfo;
+  const idAttr = elemId ? ` id="${elemId}"` : '';
+  const classAttr = className ? ` class="${className}"` : '';
+  
   return `
 **DOM Element**:
 \`\`\`
-Tag: <${tagName}${elemId ? ` id="${elemId}"` : ''}${className ? ` class="${className}"` : ''}>
+Tag: <${tagName}${idAttr}${classAttr}>
 Text: ${textContent || '(empty)'}
 \`\`\`
 
@@ -62,7 +65,7 @@ function getAllFeedbacks() {
     
     const feedbackList = items.map((item: any, index: number) => {
       const { id, sourceInfo, feedback, status, progress, result } = item;
-      const statusText = status === 'loading' && progress 
+      const statusText = (status === 'loading' && progress)
         ? `LOADING (${progress.completed}/${progress.total} steps)`
         : status.toUpperCase();
       
@@ -157,10 +160,11 @@ function updateFeedbackStatus(args: any) {
 
   if (status === 'completed' || status === 'failed') {
     sessionStorage.removeItem(FEEDBACK_ID_KEY);
+    const resultMessage = message || (status === 'completed' ? 'Task completed' : 'Task failed');
     window.dispatchEvent(new CustomEvent("feedback-result-received", {
       detail: {
         status: status === 'completed' ? "success" : "error",
-        result: { message: message || (status === 'completed' ? 'Task completed' : 'Task failed') },
+        result: { message: resultMessage },
         feedbackId,
       },
     }));
@@ -252,7 +256,6 @@ export function useMcp() {
       .connect(transport)
       .then(() => {
         clientRef.current = client;
-        console.log("MCP client connected");
       })
       .catch((err) => {
         console.error("MCP connection error:", err);

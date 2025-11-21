@@ -1,61 +1,61 @@
-import { defineConfig } from 'tsdown';
-import postcss from 'postcss';
-import tailwindcss from '@tailwindcss/postcss';
-import fs from 'fs';
+import { defineConfig } from "tsdown";
+import postcss from "postcss";
+import tailwindcss from "@tailwindcss/postcss";
+import fs from "fs";
+import path from "path";
 
 export default defineConfig({
-  entry: ['client/inspector.tsx'],
-  format: ['iife'],
-  outDir: 'client/dist',
+  entry: ["client/inspector.tsx"],
+  format: ["iife"],
+  outDir: "client/dist",
   clean: true,
   dts: false,
   external: [], // Don't externalize anything
   noExternal: [/@mcpc-tech\/cmcp/, /.*/], // Bundle everything including @mcpc-tech/cmcp
-  platform: 'browser',
-  globalName: 'DevInspector',
+  platform: "browser",
+  globalName: "DevInspector",
   define: {
-    'process.env.NODE_ENV': '"production"',
+    "process.env.NODE_ENV": '"production"',
   },
   minify: true,
   treeshake: true,
   plugins: [
     {
-      name: 'css-handler',
-      async buildStart() {
-        // Process CSS with Tailwind during build
-        const cssInput = fs.readFileSync('client/styles.css', 'utf-8');
-        const result = await postcss([tailwindcss]).process(cssInput, {
-          from: 'client/styles.css',
-          to: 'client/dist/inspector.css',
-        });
-        
-        // Ensure dist directory exists
-        if (!fs.existsSync('client/dist')) {
-          fs.mkdirSync('client/dist', { recursive: true });
-        }
-        
-        // Write the processed CSS as a JS module
-        const cssJs = `export default ${JSON.stringify(result.css)};`;
-        fs.writeFileSync('client/dist/inspector-styles.js', cssJs);
-        
-        // Also write the CSS file for reference
-        fs.writeFileSync('client/dist/inspector.css', result.css);
-      },
+      name: "css-handler",
       resolveId(id) {
-        // Redirect CSS imports to our generated JS module
-        if (id.endsWith('styles.css')) {
-          return { id: '\0virtual:styles', moduleSideEffects: false };
+        // Redirect CSS imports to our virtual module
+        if (id.endsWith("styles.css")) {
+          return "\0virtual:styles";
         }
         return null;
       },
-      load(id) {
-        // Return the CSS as a JS module
-        if (id === '\0virtual:styles') {
-          const cssPath = 'client/dist/inspector-styles.js';
-          if (fs.existsSync(cssPath)) {
-            return fs.readFileSync(cssPath, 'utf-8');
+      async load(id) {
+        if (id === "\0virtual:styles") {
+          const cssInput = fs.readFileSync("client/styles.css", "utf-8");
+          
+          const clientDir = path.resolve(process.cwd(), "client");
+          const result = await postcss([
+            tailwindcss({
+              base: clientDir,
+              optimize: {
+                minify: false,
+              },
+            }),
+          ]).process(cssInput, {
+            from: path.join(clientDir, "styles.css"),
+            to: undefined,
+          });
+
+          // Ensure dist directory exists for reference file
+          if (!fs.existsSync("client/dist")) {
+            fs.mkdirSync("client/dist", { recursive: true });
           }
-          return 'export default "";';
+
+          // Write the processed CSS file for reference
+          fs.writeFileSync("client/dist/inspector.css", result.css);
+
+          // Return the processed CSS as a default export
+          return `export default ${JSON.stringify(result.css)};`;
         }
         return null;
       },

@@ -51,20 +51,20 @@ export const FeedbackBubble: React.FC<FeedbackBubbleProps> = ({
     }
   };
 
-  const isAllPlanCompleted = plan && plan.steps.every((s) => s.status === 'completed');
+  const isAllPlanCompleted = plan?.steps.every((s) => s.status === 'completed');
 
   const getTitle = () => {
     if (mode === 'success') return 'Processing Successful';
     if (mode === 'error') return 'Processing Failed';
-    if (mode === 'loading' && isAllPlanCompleted) return 'Processing Successful';
-    if (mode === 'loading') return 'Processing...';
+    if (mode === 'loading') return isAllPlanCompleted ? 'Processing Successful' : 'Processing...';
     return 'Feedback to AI';
   };
 
   const getIcon = () => {
-    if (mode === 'success') return <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-500" />;
+    if (mode === 'success' || (mode === 'loading' && isAllPlanCompleted)) {
+      return <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-500" />;
+    }
     if (mode === 'error') return <XCircle className="h-5 w-5 text-red-600 dark:text-red-500" />;
-    if (mode === 'loading' && isAllPlanCompleted) return <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-500" />;
     if (mode === 'loading') return <Loader2 className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-500" />;
     return null;
   };

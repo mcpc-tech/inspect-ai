@@ -70,8 +70,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     setIsOpen(false);
   };
 
-  // Check if any required keys are missing
-  const hasAllRequiredKeys =
+  const hasAllRequiredKeys = 
     requiredKeyNames.length === 0 ||
     requiredKeyNames.every((k) => (values[k] ?? "").trim().length > 0) ||
     (requiredKeyNames.length === 1 && apiKey.trim().length > 0);

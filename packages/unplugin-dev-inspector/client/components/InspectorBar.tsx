@@ -28,86 +28,66 @@ export const InspectorBar = ({
   const [input, setInput] = useState('');
   const [displayText, setDisplayText] = useState<string>('');
   const [toolCall, setToolCall] = useState<string | null>(null);
-  const [textOffset, setTextOffset] = useState(0); // For ticker animation
-
-  console.log({ messages, displayText, toolCall });
+  const [textOffset, setTextOffset] = useState(0);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
 
-  // --- Message Processing Logic ---
   useEffect(() => {
-    if (messages.length > 0) {
-      const last = messages[messages.length - 1];
+    if (messages.length === 0) return;
 
-      // Extract text content from message parts
-      let text = '';
-      let currentTool: string | null = null;
+    const last = messages[messages.length - 1];
+    let text = '';
+    let currentTool: string | null = null;
 
-      // Helper to extract tool name from a message
-      const extractToolName = (msg: UIMessage): string | null => {
-        if (!msg.parts) return null;
+    const extractToolName = (msg: UIMessage): string | null => {
+      if (!msg.parts) return null;
 
-        for (const part of msg.parts) {
-          // Check for standard tool-call
-          if (part.type === 'tool-call' && 'toolName' in part && typeof part.toolName === 'string') {
-            return part.toolName;
-          }
-          // Check for ACP tool call
-          if (part.type === 'tool-acp.acp_provider_agent_dynamic_tool' && 'input' in part && typeof part.input === 'object' && part.input !== null && 'toolName' in part.input) {
-            // @ts-ignore - Custom structure handling
-            return part.input.toolName;
-          }
+      for (const part of msg.parts) {
+        if (part.type === 'tool-call' && 'toolName' in part && typeof part.toolName === 'string') {
+          return part.toolName;
         }
-        return null;
-      };
-
-      // Check current message for tool call
-      currentTool = extractToolName(last);
-
-      // If no tool in current message, check lookback (second to last)
-      // This helps keep the tool name visible while the response is starting
-      if (!currentTool && messages.length > 1) {
-        currentTool = extractToolName(messages[messages.length - 2]);
-      }
-
-      if ('parts' in last && Array.isArray(last.parts)) {
-        for (const part of last.parts) {
-          const messagePart = part as UIMessagePart<Record<string, unknown>, Record<string, UITool>>;
-
-          // Accumulate text from all text parts
-          if (messagePart.type === 'text' && 'text' in messagePart && typeof messagePart.text === 'string') {
-            text += messagePart.text;
-          }
+        if (part.type === 'tool-acp.acp_provider_agent_dynamic_tool' && 'input' in part && typeof part.input === 'object' && part.input !== null && 'toolName' in part.input) {
+          // @ts-ignore - Custom structure handling
+          return part.input.toolName;
         }
-      } else if ('content' in last && typeof last.content === 'string') {
-        text = last.content;
-      } else if ('text' in last && typeof last.text === 'string') {
-        // Handle custom text message structure
-        text = last.text;
       }
+      return null;
+    };
 
-      setDisplayText(text);
+    currentTool = extractToolName(last);
+    if (!currentTool && messages.length > 1) {
+      currentTool = extractToolName(messages[messages.length - 2]);
+    }
 
-      // Show tool name if there's an active tool call
-      if (currentTool) {
-        console.log('🔧 Setting toolCall:', currentTool);
-        setToolCall(currentTool);
-      } else if ('toolInvocations' in last && Array.isArray(last.toolInvocations) && last.toolInvocations.length > 0) {
-        // Fallback to toolInvocations for completed tool calls
-        const lastTool = last.toolInvocations[last.toolInvocations.length - 1];
-        if (typeof lastTool === 'object' && lastTool !== null && 'toolName' in lastTool && typeof lastTool.toolName === 'string') {
-          console.log('🔧 Setting toolCall from toolInvocations:', lastTool.toolName);
-          setToolCall(lastTool.toolName);
+    if ('parts' in last && Array.isArray(last.parts)) {
+      for (const part of last.parts) {
+        const messagePart = part as UIMessagePart<Record<string, unknown>, Record<string, UITool>>;
+        if (messagePart.type === 'text' && 'text' in messagePart && typeof messagePart.text === 'string') {
+          text += messagePart.text;
         }
-      } else {
-        setToolCall(null);
       }
+    } else if ('content' in last && typeof last.content === 'string') {
+      text = last.content;
+    } else if ('text' in last && typeof last.text === 'string') {
+      text = last.text;
+    }
+
+    setDisplayText(text);
+
+    if (currentTool) {
+      setToolCall(currentTool);
+    } else if ('toolInvocations' in last && Array.isArray(last.toolInvocations) && last.toolInvocations.length > 0) {
+      const lastTool = last.toolInvocations[last.toolInvocations.length - 1];
+      if (typeof lastTool === 'object' && lastTool !== null && 'toolName' in lastTool && typeof lastTool.toolName === 'string') {
+        setToolCall(lastTool.toolName);
+      }
+    } else {
+      setToolCall(null);
     }
   }, [messages]);
 
-  // Ticker animation for long text - cycle through every 3 seconds
   useEffect(() => {
     if (!displayText || displayText.length <= 50) {
       setTextOffset(0);
@@ -117,8 +97,7 @@ export const InspectorBar = ({
     const interval = setInterval(() => {
       setTextOffset(prev => {
         const maxOffset = displayText.length - 40;
-        const nextOffset = prev + 20;
-        return nextOffset > maxOffset ? 0 : nextOffset;
+        return prev + 20 > maxOffset ? 0 : prev + 20;
       });
     }, 3000);
 
@@ -136,13 +115,12 @@ export const InspectorBar = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim()) {
-      onSubmitAgent(input);
-      setInput('');
-      setIsExpanded(false);
-      // Force blur to collapse the bar even if mouse is still hovering
-      inputRef.current?.blur();
-    }
+    if (!input.trim()) return;
+
+    onSubmitAgent(input);
+    setInput('');
+    setIsExpanded(false);
+    inputRef.current?.blur();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -158,7 +136,6 @@ export const InspectorBar = ({
 
   const isError = status === 'error';
   const hasMessage = messages.length > 0;
-  // Determine if we should show the message view in collapsed state
   const showMessage = !isExpanded && (isAgentWorking || hasMessage);
 
   return (
@@ -180,12 +157,10 @@ export const InspectorBar = ({
         isExpanded ? "h-14 p-2 pl-4" : "h-12 px-3",
         isError && !isExpanded && "bg-red-500/10 border-red-500/20"
       )}>
-        {/* Collapsed State Content */}
         <div className={cn(
           "flex items-center gap-3 transition-opacity duration-300",
           isExpanded ? "absolute left-3 opacity-0 pointer-events-none" : "relative opacity-100"
         )}>
-          {/* Logo and Branding - Always visible */}
           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 dark:bg-black/5 flex-shrink-0">
             <Sparkles className="w-4 h-4 text-white dark:text-black" />
           </div>
@@ -193,7 +168,6 @@ export const InspectorBar = ({
             FeedWeb AI
           </span>
 
-          {/* Message View - Shows when there are messages */}
           {showMessage && (
             <>
               <div className="w-px h-6 bg-white/20 dark:bg-black/10 flex-shrink-0" />
@@ -213,13 +187,11 @@ export const InspectorBar = ({
 
               <div className="flex flex-col min-w-[100px] max-w-[300px] pr-2">
                 {toolCall ? (
-                  // Show tool name with higher priority - hide text when tool is active
                   <div className="flex items-center gap-1.5 text-sm font-medium text-white dark:text-black">
                     <Terminal className="w-4 h-4" />
                     <span className="truncate">{toolCall}</span>
                   </div>
                 ) : (
-                  // Show text message only when no tool is active
                   <div
                     ref={textRef}
                     className="text-sm font-medium leading-tight truncate text-white dark:text-black"
@@ -243,12 +215,10 @@ export const InspectorBar = ({
           )}
         </div>
 
-        {/* Expanded State Content */}
         <div className={cn(
           "flex items-center w-full gap-3 transition-all duration-500 delay-75",
           isExpanded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none absolute top-2 left-4 right-2"
         )}>
-          {/* Inspector Toggle */}
           <button
             onClick={onToggleInspector}
             className={cn(
@@ -267,10 +237,8 @@ export const InspectorBar = ({
             )}
           </button>
 
-          {/* Divider */}
           <div className="w-px h-6 bg-white/20 dark:bg-black/10 flex-shrink-0" />
 
-          {/* Input Form */}
           <form onSubmit={handleSubmit} className="flex-1 flex items-center gap-2 min-w-0">
             <div className="relative flex-1">
               <input
