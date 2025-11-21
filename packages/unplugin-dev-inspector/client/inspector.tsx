@@ -4,17 +4,13 @@ import ReactDOM from 'react-dom/client';
 import type { InspectedElement } from './types';
 import { Notification } from './components/Notification';
 import { FeedbackBubble } from './components/FeedbackBubble';
-import { FeedbackCart, type FeedbackItem } from './components/FeedbackCart';
-import { InspectorButton } from './components/InspectorButton';
-import { AcpAgentButton } from './components/AcpAgentButton';
-import AcpAgent from './components/AcpAgent';
+import { type FeedbackItem } from './components/FeedbackCart';
 import { Overlay, Tooltip } from './components/Overlays';
 import { useNotification } from './hooks/useNotification';
 import { useInspectorHover } from './hooks/useInspectorHover';
 import { useInspectorClick } from './hooks/useInspectorClick';
 import { useMcp } from './hooks/useMcp';
 import { Toaster } from './components/ui/sonner';
-import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover';
 import { cn } from './lib/utils';
 import { InspectorThemeProvider, useInspectorTheme } from './context/ThemeContext';
 
@@ -50,22 +46,32 @@ interface InspectorContainerProps {
   shadowRoot?: ShadowRoot;
 }
 
+// Import new components
+import { InspectorBar } from './components/InspectorBar';
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
+import { AVAILABLE_AGENTS, DEFAULT_AGENT } from './constants/agents';
+
 const InspectorContainer: React.FC<InspectorContainerProps> = ({ shadowRoot }) => {
   useMcp();
   const { resolvedTheme } = useInspectorTheme();
   const [container, setContainer] = useState<HTMLElement | null>(null);
-  
+
   const [isActive, setIsActive] = useState(false);
   const [sourceInfo, setSourceInfo] = useState<InspectedElement | null>(null);
   const [bubbleMode, setBubbleMode] = useState<'input' | null>(null);
   const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>(loadFeedbackItems);
-  const [showCart, setShowCart] = useState(false);
-  const [showAgentPanel, setShowAgentPanel] = useState(false);
 
-  const btnRef = useRef<HTMLButtonElement>(null);
+  // Agent State
+  const { messages, sendMessage, status } = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/acp/chat",
+    }),
+  });
+
   const overlayRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
-  const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null); // Kept for hooks but not rendered
 
   const { notification, showNotif } = useNotification();
 
@@ -73,7 +79,7 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({ shadowRoot }) =
   useEffect(() => {
     const activeFeedbackId = sessionStorage.getItem('inspector-current-feedback-id');
     if (!activeFeedbackId) return;
-    
+
     const feedbackExists = feedbackItems.some(item => item.id === activeFeedbackId);
     if (!feedbackExists) {
       sessionStorage.removeItem('inspector-current-feedback-id');
@@ -83,8 +89,11 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({ shadowRoot }) =
   // Handle ESC key to exit inspection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isActive) {
-        handleBubbleClose();
+      if (e.key === 'Escape') {
+        if (isActive) {
+          handleBubbleClose();
+        }
+        // Also support CMD+K to focus inspector bar (handled in component, but global shortcut here if needed)
       }
     };
 
@@ -96,53 +105,6 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({ shadowRoot }) =
   useEffect(() => {
     saveFeedbackItems(feedbackItems);
   }, [feedbackItems]);
-
-  // Handle feedback result updates
-  useEffect(() => {
-    const handleResultReceived = (event: Event) => {
-      const { status, result, feedbackId } = (event as CustomEvent).detail;
-      
-      setFeedbackItems(prev => 
-        prev.map(item => 
-          item.id === feedbackId 
-            ? { 
-                ...item, 
-                status: status === 'success' ? 'success' : 'error',
-                result: result.message || `Processing ${status === 'success' ? 'completed' : 'failed'}`
-              }
-            : item
-        )
-      );
-      
-      showNotif(status === 'success' ? '✅ AI processing completed' : '⚠️ AI processing failed');
-    };
-
-    const handlePlanProgress = (event: Event) => {
-      const { plan, feedbackId } = (event as CustomEvent).detail;
-      const completedSteps = plan.steps.filter((s: any) => s.status === 'completed').length;
-      
-      setFeedbackItems(prev =>
-        prev.map(item =>
-          item.id === feedbackId
-            ? { ...item, status: 'loading', progress: { completed: completedSteps, total: plan.steps.length } }
-            : item
-        )
-      );
-    };
-
-    const handleActivateInspector = () => {
-      if (!isActive && btnRef.current) btnRef.current.click();
-    };
-
-    const events = [
-      ['feedback-result-received', handleResultReceived],
-      ['plan-progress-reported', handlePlanProgress],
-      ['activate-inspector', handleActivateInspector]
-    ] as const;
-
-    events.forEach(([name, handler]) => window.addEventListener(name, handler as EventListener));
-    return () => events.forEach(([name, handler]) => window.removeEventListener(name, handler as EventListener));
-  }, [showNotif, isActive]);
 
   useInspectorHover({
     isActive,
@@ -165,16 +127,13 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({ shadowRoot }) =
     btnRef,
   });
 
-  const toggleInspector = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const toggleInspector = () => {
     const newActive = !isActive;
     setIsActive(newActive);
-    
-    btnRef.current?.classList.toggle('active', newActive);
+
     document.body.style.cursor = newActive ? 'crosshair' : '';
 
     if (newActive) {
-      setShowAgentPanel(false);
       setBubbleMode(null);
     } else {
       if (overlayRef.current) overlayRef.current.style.display = 'none';
@@ -187,7 +146,7 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({ shadowRoot }) =
 
   const handleFeedbackSubmit = (feedback: string) => {
     if (!sourceInfo) return;
-    
+
     const feedbackId = `feedback-${Date.now()}`;
     const newItem: FeedbackItem = {
       id: feedbackId,
@@ -202,104 +161,82 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({ shadowRoot }) =
       status: 'loading',
       timestamp: Date.now(),
     };
-    
+
     setFeedbackItems(prev => [...prev, newItem]);
     setBubbleMode(null);
     setIsActive(false);
-    btnRef.current?.classList.remove('active');
     document.body.style.cursor = '';
-    
-    window.dispatchEvent(new CustomEvent('element-inspected', {
-      detail: { sourceInfo, feedback, feedbackId },
-    }));
+
+    // Send to agent via sendMessage
+    // Construct a cleaner prompt without cyclic references
+    const cleanSourceInfo = {
+      file: sourceInfo.file,
+      component: sourceInfo.component,
+      line: sourceInfo.line,
+      column: sourceInfo.column,
+      elementInfo: sourceInfo.elementInfo,
+    };
+    const prompt = `Context: ${JSON.stringify(cleanSourceInfo, null, 2)}\n\nRequest: ${feedback}`;
+
+    // We need to use the default agent for now or the one selected in a future settings UI
+    const currentAgent = AVAILABLE_AGENTS.find(a => a.command === DEFAULT_AGENT) || AVAILABLE_AGENTS[0];
+
+    sendMessage(
+      { text: prompt },
+      {
+        body: {
+          agent: currentAgent,
+          envVars: {}, // TODO: Handle env vars
+        }
+      }
+    );
   };
 
   const handleBubbleClose = () => {
     setBubbleMode(null);
     setIsActive(false);
-    btnRef.current?.classList.remove('active');
     document.body.style.cursor = '';
-    
+
     if (overlayRef.current) overlayRef.current.style.display = 'none';
     if (tooltipRef.current) tooltipRef.current.style.display = 'none';
-
-    window.dispatchEvent(new CustomEvent('inspector-cancelled'));
   };
 
-  const toggleAgentPanel = () => {
-    const next = !showAgentPanel;
-    setShowAgentPanel(next);
-
-    if (next) {
-      setIsActive(false);
-      setBubbleMode(null);
-      btnRef.current?.classList.remove('active');
-      document.body.style.cursor = '';
-      if (overlayRef.current) overlayRef.current.style.display = 'none';
-      if (tooltipRef.current) tooltipRef.current.style.display = 'none';
-    }
-  };
-
-  const handleAgentClose = () => {
-    setShowAgentPanel(false);
-  };
-
-  const handleRemoveFeedback = (id: string) => {
-    setFeedbackItems(prev => prev.filter(item => item.id !== id));
-  };
-
-  const handleMouseEnter = () => {
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    if (feedbackItems.length > 0) setShowCart(true);
-  };
-
-  const handleMouseLeave = () => {
-    hideTimerRef.current = setTimeout(() => setShowCart(false), 150);
+  const handleAgentSubmit = (query: string) => {
+    const currentAgent = AVAILABLE_AGENTS.find(a => a.command === DEFAULT_AGENT) || AVAILABLE_AGENTS[0];
+    sendMessage(
+      { text: query },
+      {
+        body: {
+          agent: currentAgent,
+          envVars: {},
+        }
+      }
+    );
   };
 
   return (
-    <div 
-      ref={setContainer} 
+    <div
+      ref={setContainer}
       className={cn(
-        "font-sans antialiased w-full h-full pointer-events-none fixed inset-0", 
+        "font-sans antialiased w-full h-full pointer-events-none fixed inset-0",
         resolvedTheme === 'dark' && 'dark'
       )}
     >
       <InspectorContainerContext.Provider value={container || shadowRoot || null}>
-        <div
-          className="fixed bottom-20 right-5 flex flex-col gap-2 items-end z-[999999] pointer-events-auto"
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-        >
-          <Popover open={showCart && feedbackItems.length > 0} onOpenChange={setShowCart}>
-            <PopoverTrigger asChild>
-              <InspectorButton 
-                ref={btnRef} 
-                isActive={isActive} 
-                onClick={toggleInspector}
-                feedbackCount={feedbackItems.length}
-              />
-            </PopoverTrigger>
-            <PopoverContent 
-              className="w-80 p-0" 
-              side="top" 
-              align="center"
-              sideOffset={4}
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-            >
-              <FeedbackCart
-                items={feedbackItems}
-                onRemove={handleRemoveFeedback}
-              />
-            </PopoverContent>
-          </Popover>
-          
-          <AcpAgentButton
-            isActive={showAgentPanel}
-            onClick={toggleAgentPanel}
+
+        {/* New UI Components */}
+        <div className="pointer-events-auto">
+          <InspectorBar
+            isActive={isActive}
+            onToggleInspector={toggleInspector}
+            onSubmitAgent={handleAgentSubmit}
+            isAgentWorking={status === 'streaming' || status === 'submitted'}
+            messages={messages}
+            status={status}
+            feedbackCount={feedbackItems.length}
           />
         </div>
+
         <Overlay ref={overlayRef} visible={isActive && bubbleMode === null} />
         <Tooltip ref={tooltipRef} visible={isActive && bubbleMode === null} />
 
@@ -316,30 +253,6 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({ shadowRoot }) =
           </div>
         )}
 
-        {showAgentPanel && (
-          <div className="fixed bottom-20 right-20 w-[500px] h-[600px] z-[999998] pointer-events-auto">
-            <div 
-              className="bg-background rounded-lg shadow-2xl w-full h-full flex flex-col overflow-hidden border border-border"
-            >
-              <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0 bg-muted/30">
-                <h2 className="text-base font-semibold">AI Agent</h2>
-                <button
-                  onClick={handleAgentClose}
-                  className="rounded-md p-1.5 hover:bg-accent transition-colors"
-                  aria-label="Close"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="flex-1 min-h-0 p-4">
-                <AcpAgent />
-              </div>
-            </div>
-          </div>
-        )}
-        
         <Toaster />
       </InspectorContainerContext.Provider>
     </div>
@@ -350,12 +263,12 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({ shadowRoot }) =
 class DevInspector extends HTMLElement {
   connectedCallback() {
     const shadowRoot = this.attachShadow({ mode: 'open' });
-    
+
     // Inject styles into Shadow DOM
     const styleElement = document.createElement('style');
     styleElement.textContent = inspectorStyles;
     shadowRoot.appendChild(styleElement);
-    
+
     // Create mount point for React inside Shadow DOM
     const mountPoint = document.createElement('div');
     shadowRoot.appendChild(mountPoint);
@@ -363,7 +276,7 @@ class DevInspector extends HTMLElement {
     // Render React app inside Shadow DOM with ShadowRoot context
     const reactRoot = ReactDOM.createRoot(mountPoint);
     reactRoot.render(
-      React.createElement(InspectorThemeProvider, null, 
+      React.createElement(InspectorThemeProvider, null,
         React.createElement(InspectorContainer, { shadowRoot })
       )
     );

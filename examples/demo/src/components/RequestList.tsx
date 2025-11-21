@@ -11,10 +11,10 @@ export default function RequestList({
   onSelect?: (request: EnhancedNetworkRequest) => void;
 }) {
   if (!requests || requests.length === 0) return (
-    <div className="p-4 bg-white dark:bg-gray-900 rounded text-gray-500 dark:text-gray-400 text-center">{EMPTY_STATE_MESSAGE}</div>
+    <div className="-m-5 p-5 text-gray-500 dark:text-gray-400 text-center">{EMPTY_STATE_MESSAGE}</div>
   );
   return (
-    <div className="overflow-auto max-h-80 bg-white dark:bg-gray-900 rounded">
+    <div className="overflow-auto max-h-80 -m-5 p-5">
       {requests.map((r, i) => (
         <div 
           key={r.id || i} 
