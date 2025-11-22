@@ -5,6 +5,7 @@ export default defineConfig({
   format: ["esm", "cjs"],
   clean: true,
   dts: true,
+  hash: false,
   external: [
     "vite",
     "webpack",
