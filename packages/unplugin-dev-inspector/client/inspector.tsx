@@ -160,6 +160,18 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({
     };
 
     setFeedbackItems((prev) => [...prev, newItem]);
+    
+    // Dispatch the element-inspected event to resolve the MCP tool promise
+    window.dispatchEvent(
+      new CustomEvent("element-inspected", {
+        detail: {
+          sourceInfo: newItem.sourceInfo,
+          feedback,
+          feedbackId,
+        },
+      })
+    );
+    
     setBubbleMode(null);
     setIsActive(false);
     document.body.style.cursor = "";
