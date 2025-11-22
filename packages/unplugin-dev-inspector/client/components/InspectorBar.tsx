@@ -92,8 +92,11 @@ export const InspectorBar = ({
 
     onSubmitAgent(input);
     setInput('');
-    setIsExpanded(false);
-    inputRef.current?.blur();
+    // Only collapse the bar if the panel is not expanded
+    if (!isPanelExpanded) {
+      setIsExpanded(false);
+      inputRef.current?.blur();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -138,9 +141,12 @@ export const InspectorBar = ({
           isExpanded ? "absolute left-3 opacity-0 pointer-events-none" : "relative opacity-100"
         )}>
           {!showMessage && (
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-accent flex-shrink-0">
-              <Sparkles className="w-4 h-4 text-foreground" />
-            </div>
+            <>
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-accent flex-shrink-0">
+                <Sparkles className="w-4 h-4 text-foreground" />
+              </div>
+              <span className="text-sm text-muted-foreground/70">Hover to use</span>
+            </>
           )}
 
           {showMessage && (

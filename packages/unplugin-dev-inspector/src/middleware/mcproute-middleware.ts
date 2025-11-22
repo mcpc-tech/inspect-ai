@@ -208,8 +208,9 @@ async function handleSseConnection(
       (t) => t.__puppetId === aliasSessionId
     );
 
+    let boundTransport = transport as unknown;
     if (runningHostTransport) {
-      bindPuppet(runningHostTransport, transport);
+      boundTransport = bindPuppet(runningHostTransport, transport);
     }
 
     if (puppetId) {
@@ -217,7 +218,7 @@ async function handleSseConnection(
         // throw new Error(`Puppet ${puppetId} not found`);
       }
 
-      bindPuppet(transport, transports[puppetId]);
+      boundTransport = bindPuppet(transport, transports[puppetId]);
       // @ts-expect-error - puppet transport marker
       transport.__puppetId = puppetId;
     }
@@ -228,6 +229,13 @@ async function handleSseConnection(
     }
 
     transport.onclose = () => {
+      // Unbind puppet to prevent sending to closed transport
+      // @ts-expect-error - unbindPuppet is added by bindPuppet
+      if (typeof boundTransport?.unbindPuppet === 'function') {
+        // @ts-expect-error - unbindPuppet is added by bindPuppet
+        boundTransport.unbindPuppet();
+      }
+      
       delete transports[sessionId];
       if (aliasSessionId) {
         delete transports[aliasSessionId];
