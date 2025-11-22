@@ -10,6 +10,7 @@
   padding: 1.5em;
   will-change: filter;
   transition: filter 300ms;
+  vertical-align: middle;
 }
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
@@ -31,6 +32,12 @@
   a:nth-of-type(2) .logo {
     animation: logo-spin infinite 20s linear;
   }
+}
+
+/* Ensure proper alignment for logos container */
+div > a {
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .card {

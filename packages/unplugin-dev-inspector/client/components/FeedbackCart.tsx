@@ -58,11 +58,11 @@ export const FeedbackCart: React.FC<FeedbackCartProps> = ({ items, onRemove }) =
 
   return (
     <div
-      className="w-full bg-gray-900 dark:bg-gray-900 rounded-lg overflow-hidden"
+      className="w-full bg-card rounded-lg overflow-hidden border border-border"
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="bg-gray-800 dark:bg-gray-800 px-4 py-3 border-b border-gray-700 dark:border-gray-700">
-        <h3 className="font-semibold text-sm text-gray-100 dark:text-gray-100">
+      <div className="bg-muted px-4 py-3 border-b border-border">
+        <h3 className="font-semibold text-sm text-foreground">
           Feedback Queue ({items.length})
         </h3>
       </div>
@@ -71,7 +71,7 @@ export const FeedbackCart: React.FC<FeedbackCartProps> = ({ items, onRemove }) =
         {items.map((item) => (
           <div
             key={item.id}
-            className="px-4 py-3 border-b border-gray-700 hover:bg-gray-800 transition-colors"
+            className="px-4 py-3 border-b border-border hover:bg-accent/50 transition-colors"
           >
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 mt-0.5">
@@ -81,10 +81,10 @@ export const FeedbackCart: React.FC<FeedbackCartProps> = ({ items, onRemove }) =
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-gray-100 truncate">
+                    <p className="text-xs font-medium text-foreground truncate">
                       {item.sourceInfo.component}
                     </p>
-                    <p className="text-xs text-gray-400 truncate">
+                    <p className="text-xs text-muted-foreground truncate">
                       {item.sourceInfo.file}
                     </p>
                   </div>
@@ -94,23 +94,23 @@ export const FeedbackCart: React.FC<FeedbackCartProps> = ({ items, onRemove }) =
                       e.stopPropagation();
                       onRemove(item.id);
                     }}
-                    className="flex-shrink-0 text-gray-500 hover:text-gray-300 transition-colors"
+                    className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
 
-                <p className="text-xs text-gray-300 mt-1 line-clamp-2">
+                <p className="text-xs text-foreground/80 mt-1 line-clamp-2">
                   {item.feedback}
                 </p>
 
                 <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-muted-foreground">
                     {getStatusText(item)}
                   </span>
 
                   {item.status === 'loading' && item.progress && (
-                    <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                       <div
                         className="h-full bg-blue-500 transition-all duration-300"
                         style={{
@@ -122,7 +122,7 @@ export const FeedbackCart: React.FC<FeedbackCartProps> = ({ items, onRemove }) =
                 </div>
 
                 {item.status === 'error' && item.result && (
-                  <p className="text-xs text-red-400 mt-1">
+                  <p className="text-xs text-destructive mt-1">
                     {item.result}
                   </p>
                 )}
