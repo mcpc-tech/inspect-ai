@@ -111,6 +111,9 @@ export async function createInspectorMcpServer() {
     {
       ...TOOL_SCHEMAS.update_feedback_status,
     },
+    {
+      ...TOOL_SCHEMAS.patch_context,
+    },
   ])
 
   // Prompts

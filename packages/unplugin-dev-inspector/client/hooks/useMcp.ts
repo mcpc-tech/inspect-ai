@@ -99,17 +99,51 @@ function formatResult(sourceInfo: any, feedback: string) {
 \`\`\`
 Tag: <${elementInfo.tagName}${elementInfo.id ? ` id="${elementInfo.id}"` : ''}${elementInfo.className ? ` class="${elementInfo.className}"` : ''}>
 Text: ${elementInfo.textContent || '(empty)'}
+DOM Path: ${elementInfo.domPath || 'N/A'}
 \`\`\`
 
-### Key Styles
+### Position & Size
+${elementInfo.boundingBox ? `
+- **Position**: (${Math.round(elementInfo.boundingBox.x)}, ${Math.round(elementInfo.boundingBox.y)})
+- **Size**: ${Math.round(elementInfo.boundingBox.width)}px × ${Math.round(elementInfo.boundingBox.height)}px
+` : ''}
+
+### Computed Styles (Key Properties)
+${elementInfo.computedStyles ? `
+**Layout**:
+- display: ${elementInfo.computedStyles.layout.display}
+- position: ${elementInfo.computedStyles.layout.position}
+- z-index: ${elementInfo.computedStyles.layout.zIndex}
+
+**Typography**:
+- font: ${elementInfo.computedStyles.typography.fontSize} ${elementInfo.computedStyles.typography.fontFamily}
+- color: ${elementInfo.computedStyles.typography.color}
+- text-align: ${elementInfo.computedStyles.typography.textAlign}
+
+**Spacing**:
+- padding: ${elementInfo.computedStyles.spacing.padding}
+- margin: ${elementInfo.computedStyles.spacing.margin}
+
+**Background & Border**:
+- background: ${elementInfo.computedStyles.background.backgroundColor}
+- border: ${elementInfo.computedStyles.border.border}
+- border-radius: ${elementInfo.computedStyles.border.borderRadius}
+
+**Effects**:
+- opacity: ${elementInfo.computedStyles.effects.opacity}
+- box-shadow: ${elementInfo.computedStyles.effects.boxShadow || 'none'}
+- transform: ${elementInfo.computedStyles.effects.transform || 'none'}
+` : `
+**Legacy Styles**:
 \`\`\`css
-display: ${elementInfo.styles.display}
-color: ${elementInfo.styles.color}
-background: ${elementInfo.styles.backgroundColor}
-font-size: ${elementInfo.styles.fontSize}
-padding: ${elementInfo.styles.padding}
-margin: ${elementInfo.styles.margin}
+display: ${elementInfo.styles?.display}
+color: ${elementInfo.styles?.color}
+background: ${elementInfo.styles?.backgroundColor}
+font-size: ${elementInfo.styles?.fontSize}
+padding: ${elementInfo.styles?.padding}
+margin: ${elementInfo.styles?.margin}
 \`\`\`
+`}
 ` : '';
   
   return createTextContent(`# Element Inspection Result
@@ -122,13 +156,183 @@ ${domInfo}
 ## User Request
 ${feedback}
 
-## Your Task
-1. Use 'read_file' to see the current code
-2. Make the necessary changes based on the user's request
-3. Call 'update_feedback_status' to update progress:
-   - Use status="in-progress" with progress details while working
-   - Use status="completed" with a message summary when done
-   - Use status="failed" with error message if something goes wrong`);
+## Debugging Tips
+
+If you encounter issues:
+
+1. **Check Browser Console**: Look for errors related to this component
+   - Open DevTools → Console tab
+   - Filter by component name or file
+   
+2. **Inspect Network**: Check if required assets/APIs are loading
+   - Open DevTools → Network tab
+   - Look for failed requests (red status)
+   
+3. **Verify Element Exists**: Use the DOM path to confirm element is rendered
+   - DOM Path: ${elementInfo?.domPath || 'Use browser inspector'}
+   
+4. **Get Fresh Context**: Use patch_context tool to get current computed styles
+   - Helpful after making changes to verify they applied
+   - Can retrieve updated DOM state, styles, or events`);
+}
+
+function patchContext(args: any) {
+  const { feedbackId, contextType = 'all' } = args;
+  
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    const items = saved ? JSON.parse(saved) : [];
+    const feedbackItem = items.find((item: any) => item.id === feedbackId);
+    
+    if (!feedbackItem) {
+      return createTextContent(`Error: Feedback item '${feedbackId}' not found. Use 'get_all_feedbacks' to see available items.`);
+    }
+    
+    const { sourceInfo } = feedbackItem;
+    if (!sourceInfo.elementInfo?.domPath) {
+      return createTextContent(`Error: No DOM path available for this element. Cannot retrieve fresh context.`);
+    }
+    
+    // Try to locate the element using the DOM path
+    // This is a best-effort approach and may not always work
+    const domPath = sourceInfo.elementInfo.domPath;
+    let element: Element | null = null;
+    
+    // Try direct selector if it has an ID
+    if (sourceInfo.elementInfo.id) {
+      element = document.getElementById(sourceInfo.elementInfo.id);
+    }
+    
+    // Fallback: try to find by class and tag combination
+    if (!element && sourceInfo.elementInfo.className) {
+      const selector = `${sourceInfo.elementInfo.tagName}.${sourceInfo.elementInfo.className.split(' ')[0]}`;
+      const candidates = document.querySelectorAll(selector);
+      // Use the first match (rough approximation)
+      element = candidates[0] || null;
+    }
+    
+    if (!element) {
+      return createTextContent(`# Unable to Locate Element
+
+The element from feedback '${feedbackId}' could not be found in the current DOM.
+
+**Possible reasons**:
+- Element was removed or unmounted
+- Page navigation occurred
+- Element is in a different state/route
+
+**Original DOM Path**: ${domPath}
+
+**Suggestion**: Inspect the element again using 'inspect_element' tool.`);
+    }
+    
+    // Element found! Extract fresh context
+    const computedStyles = window.getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    
+    let contextData = '';
+    
+    if (contextType === 'styles' || contextType === 'all') {
+      contextData += `
+## Fresh Computed Styles
+
+### Layout
+\`\`\`css
+display: ${computedStyles.display}
+position: ${computedStyles.position}
+width: ${computedStyles.width}
+height: ${computedStyles.height}
+overflow: ${computedStyles.overflow}
+z-index: ${computedStyles.zIndex}
+\`\`\`
+
+### Typography
+\`\`\`css
+font-family: ${computedStyles.fontFamily}
+font-size: ${computedStyles.fontSize}
+font-weight: ${computedStyles.fontWeight}
+line-height: ${computedStyles.lineHeight}
+color: ${computedStyles.color}
+text-align: ${computedStyles.textAlign}
+\`\`\`
+
+### Spacing
+\`\`\`css
+padding: ${computedStyles.padding}
+margin: ${computedStyles.margin}
+\`\`\`
+
+### Background & Border
+\`\`\`css
+background-color: ${computedStyles.backgroundColor}
+background-image: ${computedStyles.backgroundImage}
+border: ${computedStyles.border}
+border-radius: ${computedStyles.borderRadius}
+\`\`\`
+
+### Effects
+\`\`\`css
+opacity: ${computedStyles.opacity}
+visibility: ${computedStyles.visibility}
+box-shadow: ${computedStyles.boxShadow}
+transform: ${computedStyles.transform}
+\`\`\`
+`;
+    }
+    
+    if (contextType === 'dom' || contextType === 'all') {
+      const currentAttrs = Array.from(element.attributes).reduce((acc, attr) => {
+        acc[attr.name] = attr.value;
+        return acc;
+      }, {} as Record<string, string>);
+      
+      contextData += `
+## Current DOM State
+
+**Tag**: ${element.tagName.toLowerCase()}
+**ID**: ${element.id || '(none)'}
+**Classes**: ${element.className || '(none)'}
+**Text Content**: ${element.textContent?.trim().slice(0, 100) || '(empty)'}
+
+**Current Position**:
+- X: ${Math.round(rect.x)}px, Y: ${Math.round(rect.y)}px
+- Width: ${Math.round(rect.width)}px, Height: ${Math.round(rect.height)}px
+
+**Attributes**:
+\`\`\`json
+${JSON.stringify(currentAttrs, null, 2)}
+\`\`\`
+`;
+    }
+    
+    if (contextType === 'events' || contextType === 'all') {
+      // Event listeners are not directly accessible via standard DOM APIs
+      // This is a limitation of browser security
+      contextData += `
+## Event Listeners
+
+*Note: Event listeners cannot be retrieved via standard DOM APIs for security reasons.*
+
+To inspect event listeners:
+1. Open DevTools → Elements tab
+2. Select the element
+3. View "Event Listeners" panel
+`;
+    }
+    
+    return createTextContent(`# Fresh Context for Feedback '${feedbackId}'
+
+**Original Component**: ${sourceInfo.component}
+**File**: ${sourceInfo.file}:${sourceInfo.line}
+**DOM Path**: ${domPath}
+${contextData}
+
+---
+*Context retrieved at: ${new Date().toLocaleTimeString()}*`);
+    
+  } catch (e) {
+    return createTextContent(`Error: Failed to retrieve context. ${e instanceof Error ? e.message : 'Unknown error'}`);
+  }
 }
 
 function updateFeedbackStatus(args: any) {
@@ -245,6 +449,10 @@ export function useMcp() {
       {
         ...TOOL_SCHEMAS.update_feedback_status,
         implementation: updateFeedbackStatus,
+      },
+      {
+        ...TOOL_SCHEMAS.patch_context,
+        implementation: patchContext,
       },
     ]);
 

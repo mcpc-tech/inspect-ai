@@ -12,7 +12,115 @@ export interface InspectedElement {
     className: string;
     id: string;
     attributes: Record<string, string>;
+    // Legacy flat styles for backwards compatibility
     styles: Record<string, string>;
+    // Enhanced metadata
+    domPath: string; // e.g., "html > body > div#app > header > nav"
+    boundingBox: {
+      top: number;
+      left: number;
+      width: number;
+      height: number;
+      right: number;
+      bottom: number;
+      x: number;
+      y: number;
+    };
+    lineRange?: {
+      start: number;
+      end: number;
+    };
+    // Categorized computed styles for better organization
+    computedStyles: {
+      layout: {
+        display: string;
+        position: string;
+        width: string;
+        height: string;
+        overflow: string;
+        overflowX: string;
+        overflowY: string;
+        float: string;
+        clear: string;
+        zIndex: string;
+      };
+      typography: {
+        fontFamily: string;
+        fontSize: string;
+        fontWeight: string;
+        fontStyle: string;
+        lineHeight: string;
+        textAlign: string;
+        textDecoration: string;
+        textTransform: string;
+        letterSpacing: string;
+        wordSpacing: string;
+        color: string;
+      };
+      spacing: {
+        padding: string;
+        paddingTop: string;
+        paddingRight: string;
+        paddingBottom: string;
+        paddingLeft: string;
+        margin: string;
+        marginTop: string;
+        marginRight: string;
+        marginBottom: string;
+        marginLeft: string;
+      };
+      background: {
+        backgroundColor: string;
+        backgroundImage: string;
+        backgroundSize: string;
+        backgroundPosition: string;
+        backgroundRepeat: string;
+      };
+      border: {
+        border: string;
+        borderTop: string;
+        borderRight: string;
+        borderBottom: string;
+        borderLeft: string;
+        borderRadius: string;
+        borderColor: string;
+        borderWidth: string;
+        borderStyle: string;
+      };
+      effects: {
+        opacity: string;
+        visibility: string;
+        boxShadow: string;
+        textShadow: string;
+        filter: string;
+        transform: string;
+        transition: string;
+        animation: string;
+      };
+      flexbox: {
+        flexDirection: string;
+        flexWrap: string;
+        justifyContent: string;
+        alignItems: string;
+        alignContent: string;
+        flex: string;
+        flexGrow: string;
+        flexShrink: string;
+        flexBasis: string;
+        order: string;
+      };
+      grid: {
+        gridTemplateColumns: string;
+        gridTemplateRows: string;
+        gridTemplateAreas: string;
+        gridGap: string;
+        gridColumnGap: string;
+        gridRowGap: string;
+        gridAutoFlow: string;
+        gridAutoColumns: string;
+        gridAutoRows: string;
+      };
+    };
   };
 }
 
