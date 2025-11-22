@@ -229,7 +229,9 @@ async function handleSseConnection(
 
     transport.onclose = () => {
       delete transports[sessionId];
-      delete transports[aliasSessionId];
+      if (aliasSessionId) {
+        delete transports[aliasSessionId];
+      }
     };
 
     await mcpServer.connect(transport);

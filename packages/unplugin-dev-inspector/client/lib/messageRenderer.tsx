@@ -4,6 +4,9 @@ import {
   ReasoningTrigger,
 } from "../../src/components/ai-elements/reasoning";
 import {
+  MessageResponse
+} from "../../src/components/ai-elements/message";
+import {
   Tool,
   ToolHeader,
   ToolContent,
@@ -43,9 +46,9 @@ export function renderMessagePart(
   // Render text content
   if (part.type === "text" && part.text) {
     return (
-      <div key={`${messageId}-${index}`} className="whitespace-pre-wrap">
-        {part.text}
-      </div>
+      <MessageResponse key={`${messageId}-${index}`} className="whitespace-pre-wrap">
+        {part.text as string}
+      </MessageResponse>
     );
   }
 
