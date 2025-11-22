@@ -6,6 +6,7 @@ import type { UIMessage } from 'ai';
 import { processMessage, extractToolName } from '../utils/messageProcessor';
 import { FeedbackCart, type FeedbackItem } from './FeedbackCart';
 import { MessageDetail } from './MessageDetail';
+import { useTextBuffer } from '../hooks/useTextBuffer';
 
 interface InspectorBarProps {
   isActive: boolean;
@@ -30,50 +31,112 @@ export const InspectorBar = ({
   feedbackItems = [],
   onRemoveFeedback = () => { }
 }: InspectorBarProps) => {
+  console.log(messages);
   const [isExpanded, setIsExpanded] = useState(false);
   const [input, setInput] = useState('');
-  const [displayText, setDisplayText] = useState<string>('');
   const [toolCall, setToolCall] = useState<string | null>(null);
-  const [toolResult, setToolResult] = useState<string | null>(null);
   const [isPanelExpanded, setIsPanelExpanded] = useState(false);
   const [hideInputDuringWork, setHideInputDuringWork] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
-  const [lastDisplayedText, setLastDisplayedText] = useState<string>('');
-  const [lastDisplayedToolResult, setLastDisplayedToolResult] = useState<string>('');
   const [allowHover, setAllowHover] = useState(true);
+  
+  // accumulatedText tracks the full message history for reference
+  const [accumulatedText, setAccumulatedText] = useState<string>('');
+  
+  // Use the text buffer hook to handle smooth text updates
+  const bufferedText = useTextBuffer(accumulatedText, isAgentWorking, 50);
+  
+  // Only show the new fragment of text, not the whole history
+  const [visibleFragment, setVisibleFragment] = useState('');
+  const lastProcessedTextRef = useRef('');
+  const prevVisibleFragmentRef = useRef('');
+
+  // Effect to calculate visible fragment from buffered text
+  useEffect(() => {
+    const currentFullText = bufferedText;
+    const lastFullText = lastProcessedTextRef.current;
+
+    // 1. Handle Reset/Context Switch
+    if (currentFullText.length < lastFullText.length || !currentFullText.startsWith(lastFullText)) {
+        setVisibleFragment(currentFullText);
+        lastProcessedTextRef.current = currentFullText;
+        return;
+    }
+
+    // 2. Handle Incremental Update
+    if (currentFullText.length > lastFullText.length) {
+        const newPart = currentFullText.slice(lastFullText.length).trim();
+        // Only update if there is meaningful content
+        if (newPart) {
+            setVisibleFragment(newPart);
+        }
+        lastProcessedTextRef.current = currentFullText;
+    }
+  }, [bufferedText]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const toolClearTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSeenToolNameRef = useRef<string | null>(null);
+  const isToolActiveRef = useRef(false);
 
-  // Helper function to get only new content
-  const getNewContent = (currentContent: string, lastContent: string): string => {
-    if (!lastContent) return currentContent;
-    if (currentContent.startsWith(lastContent)) {
-      return currentContent.slice(lastContent.length).trim();
-    }
-    return currentContent;
-  };
-
+  // Main effect: Process messages
   useEffect(() => {
-    if (messages.length === 0) return;
-
-    const last = messages[messages.length - 1];
-    let currentTool: string | null = null;
-
-    // Only extract tool from current message, don't look at previous messages
-    currentTool = extractToolName(last);
-
-    // Process message using utility functions
-    const { displayText, toolOutput, toolCall: extractedToolCall } = processMessage(last, currentTool);
-
-    setDisplayText(displayText);
-
-    // Update tool result and tool call
-    // If there's no tool output in the new message, clear the previous tool result
-    // This allows new text messages to be displayed
-    setToolResult(toolOutput);
-    setToolCall(extractedToolCall);
+    if (messages.length === 0) {
+      setAccumulatedText('');
+      setToolCall(null);
+      lastSeenToolNameRef.current = null;
+      isToolActiveRef.current = false;
+      setVisibleFragment('');
+      lastProcessedTextRef.current = '';
+      return;
+    }
+    
+    // KISS: Only process the LAST message (the one that's being updated)
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.role !== 'assistant') return;
+    
+    // Extract tool and text from the last message
+    const extractedTool = extractToolName(lastMessage);
+    const { displayText: messageText, toolCall: activeToolCall } = processMessage(
+      lastMessage,
+      extractedTool || lastSeenToolNameRef.current
+    );
+    
+    // Update accumulated text
+    const currentText = messageText || '';
+    setAccumulatedText(currentText);
+    
+    // Track tool name
+    if (extractedTool) {
+      lastSeenToolNameRef.current = extractedTool;
+    }
+    
+    // Update tool display
+    if (activeToolCall) {
+      // There's an active tool - show it
+      if (toolClearTimerRef.current) {
+        clearTimeout(toolClearTimerRef.current);
+        toolClearTimerRef.current = null;
+      }
+      setToolCall(activeToolCall);
+      isToolActiveRef.current = true;
+    } else {
+      isToolActiveRef.current = false;
+    }
   }, [messages]);
+
+  // Effect to clear tool when text updates
+  useEffect(() => {
+    if (visibleFragment !== prevVisibleFragmentRef.current) {
+      // If text has updated and no tool is currently active, clear the tool display
+      // This ensures we keep showing the tool name until the text actually appears
+      if (!isToolActiveRef.current) {
+        setToolCall(null);
+      }
+      prevVisibleFragmentRef.current = visibleFragment;
+    }
+  }, [visibleFragment]);
 
   // Auto-focus input when expanded
   useEffect(() => {
@@ -88,9 +151,7 @@ export const InspectorBar = ({
       // Unlock immediately, but keep showing the content
       setHideInputDuringWork(false);
       setIsLocked(false);
-      // Clear tool states when work is done
-      setToolCall(null);
-      setToolResult(null);
+      // Don't clear tool call here - let the message processing effect handle it with delay
       // Temporarily disable hover to show result
       setAllowHover(false);
       // Re-enable hover after 2 seconds
@@ -105,15 +166,18 @@ export const InspectorBar = ({
     e.preventDefault();
     if (!input.trim()) return;
 
-    // Clear tool states immediately when submitting new input
+    // Clear any pending timer
+    if (toolClearTimerRef.current) {
+      clearTimeout(toolClearTimerRef.current);
+      toolClearTimerRef.current = null;
+    }
+
+    // Clear all states for new query
     setToolCall(null);
-    setToolResult(null);
-    setDisplayText('');
+    setAccumulatedText('');
+    lastSeenToolNameRef.current = null;
     setHideInputDuringWork(true);
     setIsLocked(true);
-    // Reset tracking for new query
-    setLastDisplayedText('');
-    setLastDisplayedToolResult('');
 
     onSubmitAgent(input);
     setInput('');
@@ -201,23 +265,19 @@ export const InspectorBar = ({
               <div className="w-px h-6 bg-border flex-shrink-0" />
 
               <div className="flex flex-col pr-2 max-h-[120px] overflow-y-auto">
-                {toolResult ? (
-                  <div className="text-sm font-medium leading-[1.4] text-green-400 dark:text-green-600 line-clamp-3">
-                    <span>{getNewContent(toolResult, lastDisplayedToolResult)}</span>
-                  </div>
-                ) : toolCall ? (
+                {toolCall ? (
                   <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                     <Terminal className="w-4 h-4 flex-shrink-0" />
                     <span className="line-clamp-3">{toolCall}</span>
                   </div>
                 ) : (
                   <div className="text-sm font-medium leading-[1.4] text-foreground line-clamp-3">
-                    {isAgentWorking ? (
+                    {isAgentWorking && !visibleFragment ? (
                       <Shimmer duration={2} spread={2}>
                         Thinking...
                       </Shimmer>
                     ) : (
-                      getNewContent(displayText, lastDisplayedText)
+                      visibleFragment || 'Processing...'
                     )}
                   </div>
                 )}
@@ -267,8 +327,8 @@ export const InspectorBar = ({
               tabIndex={0}
             />
 
-            {/* Expand button */}
-            {(feedbackCount > 0 || messages.length > 0 || true) && (
+            {/* Expand button - only show when AI is working or has messages */}
+            {(feedbackCount > 0 || messages.length > 0) && (isAgentWorking || isLocked || messages.length > 0) && (
               <button
                 type="button"
                 onClick={() => setIsPanelExpanded(!isPanelExpanded)}

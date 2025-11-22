@@ -105,7 +105,9 @@ export function extractToolName(message: any): string | null {
     return null;
   }
 
-  for (const part of message.parts) {
+  // Scan in REVERSE to find the latest tool name
+  for (let i = message.parts.length - 1; i >= 0; i--) {
+    const part = message.parts[i];
     if (part.type === 'tool-call' && 'toolName' in part && typeof part.toolName === 'string') {
       return part.toolName;
     }
@@ -119,39 +121,70 @@ export function extractToolName(message: any): string | null {
 
 /**
  * Extract tool call name from a message
- * Returns null if there's text content after tool output (indicating tool is done)
+ * Returns the LAST active tool (input-available state) found in the message parts
+ * Returns null if there's text content after the tool (indicating tool is done)
  */
 export function extractToolCall(message: any, currentTool?: string | null): string | null {
-  // Check if there's text content after tool output
-  // If so, the tool is done and we should show the text instead
   if ('parts' in message && Array.isArray(message.parts)) {
-    let hasToolOutput = false;
-    let hasTextAfterTool = false;
+    let foundActiveToolCall: string | null = null;
+    let lastToolIndex = -1;
 
-    for (const part of message.parts) {
-      // Check for tool output
-      if (part.type === 'tool-result' || 
-          (part.type === 'tool-acp.acp_provider_agent_dynamic_tool' && 'output' in part)) {
-        hasToolOutput = true;
+    // IMPORTANT: Scan in REVERSE order to find the LATEST tool
+    // We only care about the very last tool in the list.
+    // If the last tool is done, then no tool is active.
+    for (let i = message.parts.length - 1; i >= 0; i--) {
+      const part = message.parts[i];
+      
+      // Check for ACP tool
+      if (part.type === 'tool-acp.acp_provider_agent_dynamic_tool') {
+        const state = 'state' in part ? part.state : null;
+        
+        // Only show tools in input-available state (actively running)
+        if (state === 'input-available') {
+          if ('input' in part && typeof part.input === 'object' && part.input !== null && 'toolName' in part.input) {
+            foundActiveToolCall = part.input.toolName;
+            lastToolIndex = i;
+          }
+        }
+        // Whether it was active or not, we found the latest tool. Stop searching.
+        break;
       }
       
-      // Check for text after tool output
-      if (hasToolOutput && part.type === 'text' && 'text' in part && typeof part.text === 'string' && part.text.trim()) {
-        hasTextAfterTool = true;
+      // Check for standard tool-call
+      if (part.type === 'tool-call' && 'toolName' in part && typeof part.toolName === 'string') {
+        foundActiveToolCall = part.toolName;
+        lastToolIndex = i;
         break;
       }
     }
-
-    // If there's text after tool output, don't show tool call
-    if (hasTextAfterTool) {
-      return null;
+    
+    // If we found a potential active tool, verify it hasn't ended (for tool-call)
+    // For ACP tools, the state check above is sufficient, but checking for subsequent text doesn't hurt.
+    if (foundActiveToolCall && lastToolIndex !== -1) {
+      for (let i = lastToolIndex + 1; i < message.parts.length; i++) {
+        const part = message.parts[i];
+        if (part.type === 'text' && 'text' in part && typeof part.text === 'string' && part.text.trim()) {
+          // Found text after tool - tool is done, show text instead
+          return null;
+        }
+        if (part.type === 'tool-result') {
+          // Found result after tool - tool is done
+          return null;
+        }
+      }
+      return foundActiveToolCall;
     }
+
+    // If we have parts, we trust the parts. If no active tool was found, return null.
+    return null;
   }
 
+  // Use the provided currentTool if available (only if parts was missing)
   if (currentTool) {
     return currentTool;
   }
 
+  // Fallback to toolInvocations
   if ('toolInvocations' in message && Array.isArray(message.toolInvocations) && message.toolInvocations.length > 0) {
     const lastTool = message.toolInvocations[message.toolInvocations.length - 1];
     if (typeof lastTool === 'object' && lastTool !== null && 'toolName' in lastTool && typeof lastTool.toolName === 'string') {
