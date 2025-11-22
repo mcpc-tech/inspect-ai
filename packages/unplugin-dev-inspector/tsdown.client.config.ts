@@ -21,6 +21,31 @@ export default defineConfig({
   treeshake: true,
   plugins: [
     {
+      name: "path-alias-resolver",
+      resolveId(id, importer) {
+        // Resolve client/lib/utils to actual path
+        if (id === "client/lib/utils") {
+          return path.resolve(process.cwd(), "client/lib/utils.ts");
+        }
+        // Resolve client/components/ui/* to actual paths (without .tsx extension in import)
+        if (id.startsWith("client/components/ui/")) {
+          const componentName = id.split("/").pop(); // Get last part (e.g., "card")
+          return path.resolve(process.cwd(), `client/components/ui/${componentName}.tsx`);
+        }
+        return null;
+      },
+    },
+    {
+      name: "asset-handler",
+      resolveId(id) {
+        // Handle binary assets (fonts, images, etc.)
+        if (/\.(ttf|woff|woff2|eot|otf|png|jpg|jpeg|gif|svg)$/.test(id)) {
+          return { id, external: true };
+        }
+        return null;
+      },
+    },
+    {
       name: "css-handler",
       resolveId(id) {
         // Redirect CSS imports to our virtual module
@@ -55,7 +80,7 @@ export default defineConfig({
           fs.writeFileSync("client/dist/inspector.css", result.css);
 
           // Return the processed CSS as a default export
-          return `export default ${JSON.stringify(result.css)};`;
+          return `export default ${JSON.stringify(result.css)}`;
         }
         return null;
       },

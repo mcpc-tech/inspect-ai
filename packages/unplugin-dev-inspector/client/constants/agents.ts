@@ -46,4 +46,4 @@ export const AVAILABLE_AGENTS: Agent[] = [
   },
 ];
 
-export const DEFAULT_AGENT = "Codex CLI";
+export const DEFAULT_AGENT = "Claude Code";

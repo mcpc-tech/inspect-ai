@@ -19,27 +19,24 @@ export const useInspectorTheme = () => {
 };
 
 export const InspectorThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof localStorage !== 'undefined') {
-      return (localStorage.getItem('inspector-theme') as Theme) || 'system';
-    }
-    return 'system';
+  const [theme, setTheme] = useState<Theme>('system');
+
+  const [resolvedTheme, setResolvedTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window === 'undefined') return 'light';
+    // Default theme is 'system', so we check media query immediately
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
-  const [resolvedTheme, setResolvedTheme] = useState<'dark' | 'light'>('light');
-
   useEffect(() => {
-    localStorage.setItem('inspector-theme', theme);
-
     if (theme === 'system') {
       const media = window.matchMedia('(prefers-color-scheme: dark)');
       const handleChange = () => {
         setResolvedTheme(media.matches ? 'dark' : 'light');
       };
-      
+
       // Initial check
       handleChange();
-      
+
       // Listen for changes
       media.addEventListener('change', handleChange);
       return () => media.removeEventListener('change', handleChange);
@@ -47,6 +44,12 @@ export const InspectorThemeProvider: React.FC<{ children: React.ReactNode }> = (
       setResolvedTheme(theme);
     }
   }, [theme]);
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(resolvedTheme);
+  }, [resolvedTheme]);
 
   return (
     <InspectorThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>

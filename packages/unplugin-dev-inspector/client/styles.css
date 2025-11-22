@@ -1,4 +1,7 @@
-@import "tailwindcss" source("**/*.{ts,tsx}");
+@import "tailwindcss" source("./**/*.{ts,tsx}");
+
+@variant dark (&:where(.dark, .dark *));
+
 
 @theme {
   --radius: 0.5rem;
@@ -79,5 +82,56 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+  }
+}
+
+/* Custom utilities for Shadow DOM compatibility */
+@layer utilities {
+  .transform-center-x {
+    transform: translateX(-50%);
+  }
+  .transform-center-y {
+    transform: translateY(-50%);
+  }
+
+  /* Marquee animation */
+  @keyframes marquee {
+    0% {
+      transform: translateX(0%);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-marquee {
+    animation: marquee 15s linear infinite;
+  }
+
+  /* Hide scrollbar */
+  .scrollbar-hide {
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    /* Hide scrollbar for IE, Edge and Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Panel entrance animation */
+  @keyframes panel-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-panel-in {
+    animation: panel-in 0.3s cubic-bezier(0.23, 1, 0.32, 1) forwards;
   }
 }

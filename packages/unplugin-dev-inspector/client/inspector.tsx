@@ -53,6 +53,16 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({
   const { notification, showNotif } = useNotification();
 
   useEffect(() => {
+    if (shadowRoot && shadowRoot.host) {
+      if (resolvedTheme === 'dark') {
+        shadowRoot.host.classList.add('dark');
+      } else {
+        shadowRoot.host.classList.remove('dark');
+      }
+    }
+  }, [resolvedTheme, shadowRoot]);
+
+  useEffect(() => {
     const activeFeedbackId = sessionStorage.getItem("inspector-current-feedback-id");
     if (!activeFeedbackId) return;
 
@@ -165,6 +175,10 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({
     );
   };
 
+  const handleRemoveFeedback = (id: string) => {
+    setFeedbackItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
   return (
     <div
       className={cn(
@@ -182,6 +196,8 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({
             messages={messages}
             status={status}
             feedbackCount={feedbackItems.length}
+            feedbackItems={feedbackItems}
+            onRemoveFeedback={handleRemoveFeedback}
           />
         </div>
 

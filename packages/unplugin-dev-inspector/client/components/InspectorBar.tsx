@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
-import { Eye, Sparkles, ArrowRight, Terminal, CheckCircle2, XCircle } from 'lucide-react';
+import { Eye, Sparkles, ArrowRight, Terminal, CheckCircle2, XCircle, ChevronUp } from 'lucide-react';
 import type { UIMessage } from 'ai';
 import { processMessage, extractToolName } from '../utils/messageProcessor';
+import { FeedbackCart, type FeedbackItem } from './FeedbackCart';
+import { MessageDetail } from './MessageDetail';
 
 interface InspectorBarProps {
   isActive: boolean;
@@ -12,6 +14,8 @@ interface InspectorBarProps {
   messages: UIMessage[];
   status: 'streaming' | 'submitted' | 'ready' | 'error';
   feedbackCount?: number;
+  feedbackItems?: FeedbackItem[];
+  onRemoveFeedback?: (id: string) => void;
 }
 
 export const InspectorBar = ({
@@ -21,7 +25,9 @@ export const InspectorBar = ({
   isAgentWorking,
   messages,
   status,
-  feedbackCount = 0
+  feedbackCount = 0,
+  feedbackItems = [],
+  onRemoveFeedback = () => { }
 }: InspectorBarProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [input, setInput] = useState('');
@@ -29,6 +35,7 @@ export const InspectorBar = ({
   const [toolCall, setToolCall] = useState<string | null>(null);
   const [toolResult, setToolResult] = useState<string | null>(null);
   const [shouldMarquee, setShouldMarquee] = useState(false);
+  const [isPanelExpanded, setIsPanelExpanded] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -49,7 +56,7 @@ export const InspectorBar = ({
     const { displayText, toolOutput, toolCall: extractedToolCall } = processMessage(last, currentTool);
 
     setDisplayText(displayText);
-    
+
     // Update tool result and tool call
     // If there's no tool output in the new message, clear the previous tool result
     // This allows new text messages to be displayed
@@ -108,38 +115,41 @@ export const InspectorBar = ({
     <div
       ref={containerRef}
       className={cn(
-        "fixed bottom-8 left-1/2 -translate-x-1/2 z-[999999]",
-        "transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]",
+        "fixed bottom-8 left-1/2 transform-center-x z-[999999]",
+        "transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]",
         isExpanded ? "w-[600px]" : (showMessage ? "w-auto max-w-[500px]" : "w-[160px]")
       )}
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => {
-        if (!input.trim()) setIsExpanded(false);
+        if (!input.trim() && !isPanelExpanded) setIsExpanded(false);
       }}
     >
       <div className={cn(
-        "relative flex items-center bg-black/80 dark:bg-white/90 backdrop-blur-xl rounded-full shadow-2xl border border-white/10 dark:border-black/5 overflow-hidden",
-        "transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]",
+        "relative flex items-center backdrop-blur-xl shadow-2xl border border-border overflow-hidden",
+        "transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]",
         isExpanded ? "h-14 p-2 pl-4" : "h-12 px-3",
-        isError && !isExpanded && "bg-red-500/10 border-red-500/20"
+        isPanelExpanded
+          ? "bg-muted/95 rounded-b-xl rounded-t-none border-t-0"
+          : "bg-muted/90 rounded-full",
+        isError && !isExpanded && "bg-destructive/10 border-destructive/20"
       )}>
         <div className={cn(
           "flex items-center gap-3 transition-opacity duration-300",
           isExpanded ? "absolute left-3 opacity-0 pointer-events-none" : "relative opacity-100"
         )}>
           {!showMessage && (
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 dark:bg-black/5 flex-shrink-0">
-              <Sparkles className="w-4 h-4 text-white dark:text-black" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-accent flex-shrink-0">
+              <Sparkles className="w-4 h-4 text-foreground" />
             </div>
           )}
 
           {showMessage && (
             <>
-              <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-white/10 dark:bg-black/5 flex-shrink-0">
+              <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-accent flex-shrink-0">
                 {isAgentWorking ? (
                   <>
-                    <div className="absolute inset-0 rounded-full border-2 border-current opacity-20 animate-ping text-white dark:text-black" />
-                    <Sparkles className="w-4 h-4 animate-pulse text-white dark:text-black" />
+                    <div className="absolute inset-0 rounded-full border-2 border-current opacity-20 animate-ping text-foreground" />
+                    <Sparkles className="w-4 h-4 animate-pulse text-foreground" />
                   </>
                 ) : isError ? (
                   <XCircle className="w-5 h-5 text-red-500" />
@@ -148,7 +158,7 @@ export const InspectorBar = ({
                 )}
               </div>
 
-              <div className="w-px h-6 bg-white/20 dark:bg-black/10 flex-shrink-0" />
+              <div className="w-px h-6 bg-border flex-shrink-0" />
 
               <div className="flex flex-col min-w-[100px] max-w-[300px] pr-2">
                 {toolResult ? (
@@ -156,7 +166,7 @@ export const InspectorBar = ({
                     <span className="truncate">{toolResult.length > 50 ? toolResult.substring(0, 50) + '...' : toolResult}</span>
                   </div>
                 ) : toolCall ? (
-                  <div className="flex items-center gap-1.5 text-sm font-medium text-white dark:text-black">
+                  <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                     <Terminal className="w-4 h-4" />
                     <span className="truncate">{toolCall}</span>
                   </div>
@@ -166,7 +176,7 @@ export const InspectorBar = ({
                       <div className="relative w-full overflow-hidden">
                         <div
                           ref={textRef}
-                          className="inline-block text-sm font-medium leading-tight text-white dark:text-black whitespace-nowrap animate-marquee"
+                          className="inline-block text-sm font-medium leading-tight text-foreground whitespace-nowrap animate-marquee"
                         >
                           {displayText}
                           <span className="mx-8">•</span>
@@ -176,7 +186,7 @@ export const InspectorBar = ({
                     ) : (
                       <div
                         ref={textRef}
-                        className="text-sm font-medium leading-tight text-white dark:text-black whitespace-nowrap truncate"
+                        className="text-sm font-medium leading-tight text-foreground whitespace-nowrap truncate"
                       >
                         {displayText || (isAgentWorking ? "Thinking..." : "Ready")}
                       </div>
@@ -190,7 +200,9 @@ export const InspectorBar = ({
 
         <div className={cn(
           "flex items-center w-full gap-3 transition-all duration-500 delay-75",
-          isExpanded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none absolute top-2 left-4 right-2"
+          isExpanded
+            ? "opacity-100 translate-y-0 relative pointer-events-auto"
+            : "opacity-0 translate-y-4 pointer-events-none absolute top-2 left-4 right-2"
         )}>
           <button
             onClick={onToggleInspector}
@@ -198,7 +210,7 @@ export const InspectorBar = ({
               "relative flex items-center justify-center w-10 h-10 rounded-full transition-colors flex-shrink-0",
               isActive
                 ? "bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]"
-                : "bg-white/10 dark:bg-black/5 text-white/70 dark:text-black/70 hover:bg-white/20 dark:hover:bg-black/10"
+                : "bg-accent text-muted-foreground hover:bg-accent/80 hover:text-foreground"
             )}
             title="Toggle Inspector"
           >
@@ -210,23 +222,40 @@ export const InspectorBar = ({
             )}
           </button>
 
-          <div className="w-px h-6 bg-white/20 dark:bg-black/10 flex-shrink-0" />
+          <div className="w-px h-6 bg-border flex-shrink-0" />
 
           <form onSubmit={handleSubmit} className="flex-1 flex items-center gap-2 min-w-0">
-            <div className="relative flex-1">
-              <input
-                ref={inputRef}
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask AI to check something..."
-                className="w-full bg-transparent border-none outline-none text-white dark:text-black placeholder-white/40 dark:placeholder-black/40 text-base h-10"
-              />
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
-                <span className="text-[10px] font-medium text-white/30 dark:text-black/30 bg-white/10 dark:bg-black/5 px-1.5 py-0.5 rounded">⌘K</span>
-              </div>
-            </div>
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask AI to check something..."
+              className="w-full bg-transparent border-none outline-none text-foreground placeholder-muted-foreground text-base h-10"
+            />
+
+            {/* Expand button */}
+            {(feedbackCount > 0 || messages.length > 0 || true) && (
+              <button
+                type="button"
+                onClick={() => setIsPanelExpanded(!isPanelExpanded)}
+                className={cn(
+                  "flex items-center justify-center w-10 h-10 rounded-full transition-all flex-shrink-0",
+                  isPanelExpanded
+                    ? "bg-blue-500 text-white"
+                    : "bg-accent text-muted-foreground hover:bg-accent/80 hover:text-foreground"
+                )}
+                title={isPanelExpanded ? "Collapse" : "Expand messages"}
+              >
+                <ChevronUp
+                  className={cn(
+                    "w-5 h-5 transition-transform duration-300",
+                    isPanelExpanded && "rotate-180"
+                  )}
+                />
+              </button>
+            )}
 
             <button
               type="submit"
@@ -234,8 +263,8 @@ export const InspectorBar = ({
               className={cn(
                 "flex items-center justify-center w-10 h-10 rounded-full transition-all flex-shrink-0",
                 input.trim()
-                  ? "bg-white dark:bg-black text-black dark:text-white scale-100"
-                  : "bg-white/10 dark:bg-black/5 text-white/30 dark:text-black/30 scale-90"
+                  ? "bg-foreground text-background scale-100"
+                  : "bg-accent text-muted-foreground/50 scale-90"
               )}
             >
               {isAgentWorking ? (
@@ -247,7 +276,28 @@ export const InspectorBar = ({
           </form>
         </div>
       </div>
+
+      {/* Expanded Panel - shows above the bar */}
+      {isPanelExpanded && (
+        <div className="absolute bottom-full left-0 right-0 pointer-events-auto max-w-[600px] mx-auto animate-panel-in">
+          <div className="bg-muted/95 backdrop-blur-xl rounded-t-xl border border-border border-b-0 shadow-2xl overflow-hidden">
+            {/* Feedback Queue Section */}
+            {feedbackItems.length > 0 && (
+              <div className="border-b border-border">
+                <FeedbackCart
+                  items={feedbackItems}
+                  onRemove={onRemoveFeedback}
+                />
+              </div>
+            )}
+
+            {/* Message Detail Section - Show InspectorBar messages */}
+            <div className="h-[500px]">
+              <MessageDetail messages={messages} status={status} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-

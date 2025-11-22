@@ -1,4 +1,22 @@
-import React from "react";
+import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from "../../src/components/ai-elements/reasoning";
+import {
+  Tool,
+  ToolHeader,
+  ToolContent,
+  ToolInput,
+  ToolOutput,
+} from "../../src/components/ai-elements/tool";
+import {
+  Plan,
+  PlanHeader,
+  PlanContent,
+  PlanTrigger,
+} from "../../src/components/ai-elements/plan";
+import { CodeBlock } from "../../src/components/ai-elements/code-block";
 
 type UITool = { name?: string };
 type UIMessagePart<TMeta = Record<string, unknown>, TToolMap = Record<string, UITool>> =
@@ -6,9 +24,13 @@ type UIMessagePart<TMeta = Record<string, unknown>, TToolMap = Record<string, UI
   | { type: "reasoning"; text: string; state?: string; providerMetadata?: TMeta }
   | (Record<string, unknown> & { type: string; state?: string });
 
-function isToolPart(part: unknown): part is Record<string, unknown> & { type: string; state?: string } {
+function isToolPart(
+  part: unknown
+): part is Record<string, unknown> & { type: string; state: string } {
   const p = part as Record<string, unknown>;
-  return typeof p?.type === "string" && p.type.startsWith("tool-");
+  return (
+    typeof p.type === "string" && p.type.startsWith("tool-") && "state" in p
+  );
 }
 
 export function renderMessagePart(
@@ -18,7 +40,8 @@ export function renderMessagePart(
   isStreaming: boolean,
   metadata?: Record<string, unknown>
 ) {
-  if (part.type === "text") {
+  // Render text content
+  if (part.type === "text" && part.text) {
     return (
       <div key={`${messageId}-${index}`} className="whitespace-pre-wrap">
         {part.text}
@@ -26,62 +49,107 @@ export function renderMessagePart(
     );
   }
 
+  // Render reasoning/thinking process
   if (part.type === "reasoning") {
     return (
-      <details key={`${messageId}-${index}`} className="w-full rounded border p-2 bg-muted/30">
-        <summary className="cursor-pointer text-sm font-medium">Reasoning {isStreaming ? "(streaming)" : ""}</summary>
-        <div className="mt-2 whitespace-pre-wrap text-sm">{part.text}</div>
-      </details>
+      <Reasoning
+        key={`${messageId}-${index}`}
+        className="w-full"
+        isStreaming={isStreaming}
+      >
+        <ReasoningTrigger />
+        <ReasoningContent>{part.text}</ReasoningContent>
+      </Reasoning>
     );
   }
 
+  // Render plan from message metadata
   const plan = metadata?.plan as Array<Record<string, unknown>> | undefined;
   if (plan && index === 0) {
     return (
-      <div key={`${messageId}-plan`} className="w-full rounded border p-3 bg-background/50">
-        <div className="mb-2 text-sm font-semibold">Agent Plan</div>
-        <ul className="space-y-2 text-sm">
-          {plan.map((item, i) => {
-            const content = (item?.content as string) ?? JSON.stringify(item);
-            const status = (item?.status as string) ?? "pending";
-            return (
-              <li key={`plan-${i}`} className="flex items-start justify-between gap-3">
-                <div className="flex-1">{content}</div>
-                <span className="shrink-0 rounded-full bg-accent px-2 py-0.5 text-[10px] uppercase tracking-wide">
-                  {status}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
+      <div key={`${messageId}-plan`} className="w-full">
+        <Plan defaultOpen isStreaming={isStreaming}>
+          <PlanHeader className="flex flex-row items-center">
+            <>
+              <h1 className="text-base">Agent Plan</h1>
+              <PlanTrigger className="mb-2" />
+            </>
+          </PlanHeader>
+          <PlanContent>
+            <ul className="space-y-2">
+              {plan.map((item, i) => {
+                const content =
+                  (item.content as string) || JSON.stringify(item);
+                const priority = item.priority as string | undefined;
+                const status = item.status as string | undefined;
+
+                return (
+                  <li
+                    key={`plan-${i}`}
+                    className="flex items-start justify-between gap-3"
+                  >
+                    <div className="flex-1">
+                      <div
+                        className={`text-sm ${status === "done"
+                          ? "line-through text-muted-foreground"
+                          : "text-foreground"
+                          }`}
+                      >
+                        {content}
+                      </div>
+                      {priority && (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          Priority: {priority}
+                        </div>
+                      )}
+                    </div>
+                    <div className="shrink-0 text-xs">
+                      <span
+                        className={`px-2 py-1 rounded-full font-medium text-[10px] uppercase tracking-wide ${status === "pending"
+                          ? "bg-muted text-muted-foreground"
+                          : "bg-primary/10 text-primary"
+                          }`}
+                      >
+                        {status ?? "pending"}
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </PlanContent>
+        </Plan>
       </div>
     );
   }
 
+  // Handle tool calls with type starting with "tool-"
   if (isToolPart(part)) {
-    const input = (part as any).input;
-    const output = (part as any).output;
-    const errorText = (part as any).errorText as string | undefined;
+    const toolType = part.type as `tool-${string}`;
+    const toolState = part.state as "input-streaming" | "input-available" | "output-available" | "output-error";
+    const hasOutput =
+      toolState === "output-available" || toolState === "output-error";
 
     return (
-      <div key={`${messageId}-${index}`} className="rounded border p-2 bg-background/50 text-xs">
-        <div className="mb-1 font-medium">{(part as any).type}</div>
-        {input !== undefined && (
-          <div className="mb-1">
-            <div className="font-medium">Input</div>
-            <pre className="overflow-auto rounded bg-muted p-2">{JSON.stringify(input, null, 2)}</pre>
-          </div>
-        )}
-        {output !== undefined && (
-          <div className="mb-1">
-            <div className="font-medium">Output</div>
-            <pre className="overflow-auto rounded bg-muted p-2">{JSON.stringify(output, null, 2)}</pre>
-          </div>
-        )}
-        {errorText && (
-          <div className="text-destructive">Error: {errorText}</div>
-        )}
-      </div>
+      <Tool key={`${messageId}-${index}`} defaultOpen={hasOutput}>
+        <ToolHeader type={toolType} state={toolState} />
+        <ToolContent>
+          {part.input !== undefined && <ToolInput input={part.input} />}
+          {hasOutput && (
+            <ToolOutput
+              output={
+                part.output ? (
+                  <CodeBlock
+                    code={JSON.stringify(part.output, null, 2)}
+                    language="json"
+                  />
+                ) : null
+              }
+              errorText={part.errorText as string | undefined}
+            />
+          )}
+        </ToolContent>
+      </Tool>
     );
   }
 
