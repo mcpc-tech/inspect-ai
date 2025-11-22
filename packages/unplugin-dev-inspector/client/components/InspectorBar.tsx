@@ -1,12 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
-import { Eye, Sparkles, ArrowRight, Terminal, CheckCircle2, XCircle, ChevronUp } from 'lucide-react';
-import { Shimmer } from '../../src/components/ai-elements/shimmer';
+import { Eye, Sparkles, ArrowRight, ChevronUp } from 'lucide-react';
 import type { UIMessage } from 'ai';
-import { processMessage, extractToolName } from '../utils/messageProcessor';
 import { FeedbackCart, type FeedbackItem } from './FeedbackCart';
 import { MessageDetail } from './MessageDetail';
-import { useTextBuffer } from '../hooks/useTextBuffer';
+import {
+  Conversation,
+  ConversationContent,
+  ConversationScrollButton,
+} from './ai-elements/conversation';
+import { Message, MessageAvatar, MessageContent } from './ai-elements/message';
+import { Loader } from './ai-elements/loader';
+import { renderMessagePart } from '../lib/messageRenderer';
+import { AVAILABLE_AGENTS, DEFAULT_AGENT } from '../constants/agents';
 
 interface InspectorBarProps {
   isActive: boolean;
@@ -34,109 +40,13 @@ export const InspectorBar = ({
   console.log(messages);
   const [isExpanded, setIsExpanded] = useState(false);
   const [input, setInput] = useState('');
-  const [toolCall, setToolCall] = useState<string | null>(null);
   const [isPanelExpanded, setIsPanelExpanded] = useState(false);
   const [hideInputDuringWork, setHideInputDuringWork] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [allowHover, setAllowHover] = useState(true);
-  
-  // accumulatedText tracks the full message history for reference
-  const [accumulatedText, setAccumulatedText] = useState<string>('');
-  
-  // Use the text buffer hook to handle smooth text updates
-  const bufferedText = useTextBuffer(accumulatedText, isAgentWorking, 50);
-  
-  // Only show the new fragment of text, not the whole history
-  const [visibleFragment, setVisibleFragment] = useState('');
-  const lastProcessedTextRef = useRef('');
-  const prevVisibleFragmentRef = useRef('');
-
-  // Effect to calculate visible fragment from buffered text
-  useEffect(() => {
-    const currentFullText = bufferedText;
-    const lastFullText = lastProcessedTextRef.current;
-
-    // 1. Handle Reset/Context Switch
-    if (currentFullText.length < lastFullText.length || !currentFullText.startsWith(lastFullText)) {
-        setVisibleFragment(currentFullText);
-        lastProcessedTextRef.current = currentFullText;
-        return;
-    }
-
-    // 2. Handle Incremental Update
-    if (currentFullText.length > lastFullText.length) {
-        const newPart = currentFullText.slice(lastFullText.length).trim();
-        // Only update if there is meaningful content
-        if (newPart) {
-            setVisibleFragment(newPart);
-        }
-        lastProcessedTextRef.current = currentFullText;
-    }
-  }, [bufferedText]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const toolClearTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const lastSeenToolNameRef = useRef<string | null>(null);
-  const isToolActiveRef = useRef(false);
-
-  // Main effect: Process messages
-  useEffect(() => {
-    if (messages.length === 0) {
-      setAccumulatedText('');
-      setToolCall(null);
-      lastSeenToolNameRef.current = null;
-      isToolActiveRef.current = false;
-      setVisibleFragment('');
-      lastProcessedTextRef.current = '';
-      return;
-    }
-    
-    // KISS: Only process the LAST message (the one that's being updated)
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage.role !== 'assistant') return;
-    
-    // Extract tool and text from the last message
-    const extractedTool = extractToolName(lastMessage);
-    const { displayText: messageText, toolCall: activeToolCall } = processMessage(
-      lastMessage,
-      extractedTool || lastSeenToolNameRef.current
-    );
-    
-    // Update accumulated text
-    const currentText = messageText || '';
-    setAccumulatedText(currentText);
-    
-    // Track tool name
-    if (extractedTool) {
-      lastSeenToolNameRef.current = extractedTool;
-    }
-    
-    // Update tool display
-    if (activeToolCall) {
-      // There's an active tool - show it
-      if (toolClearTimerRef.current) {
-        clearTimeout(toolClearTimerRef.current);
-        toolClearTimerRef.current = null;
-      }
-      setToolCall(activeToolCall);
-      isToolActiveRef.current = true;
-    } else {
-      isToolActiveRef.current = false;
-    }
-  }, [messages]);
-
-  // Effect to clear tool when text updates
-  useEffect(() => {
-    if (visibleFragment !== prevVisibleFragmentRef.current) {
-      // If text has updated and no tool is currently active, clear the tool display
-      // This ensures we keep showing the tool name until the text actually appears
-      if (!isToolActiveRef.current) {
-        setToolCall(null);
-      }
-      prevVisibleFragmentRef.current = visibleFragment;
-    }
-  }, [visibleFragment]);
 
   // Auto-focus input when expanded
   useEffect(() => {
@@ -151,7 +61,6 @@ export const InspectorBar = ({
       // Unlock immediately, but keep showing the content
       setHideInputDuringWork(false);
       setIsLocked(false);
-      // Don't clear tool call here - let the message processing effect handle it with delay
       // Temporarily disable hover to show result
       setAllowHover(false);
       // Re-enable hover after 2 seconds
@@ -166,16 +75,7 @@ export const InspectorBar = ({
     e.preventDefault();
     if (!input.trim()) return;
 
-    // Clear any pending timer
-    if (toolClearTimerRef.current) {
-      clearTimeout(toolClearTimerRef.current);
-      toolClearTimerRef.current = null;
-    }
-
-    // Clear all states for new query
-    setToolCall(null);
-    setAccumulatedText('');
-    lastSeenToolNameRef.current = null;
+    // Set states for new query
     setHideInputDuringWork(true);
     setIsLocked(true);
 
@@ -247,46 +147,54 @@ export const InspectorBar = ({
             </>
           )}
 
+          {/* Embed full MessageDetail rendering in the bar */}
           {showMessage && (
-            <>
-              <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-accent flex-shrink-0">
-                {isAgentWorking ? (
-                  <>
-                    <div className="absolute inset-0 rounded-full border-2 border-current opacity-20 animate-ping text-foreground" />
-                    <Sparkles className="w-4 h-4 animate-pulse text-foreground" />
-                  </>
-                ) : isError ? (
-                  <XCircle className="w-5 h-5 text-red-500" />
-                ) : (
-                  <CheckCircle2 className="w-5 h-5 text-green-500" />
-                )}
-              </div>
-
-              <div className="w-px h-6 bg-border flex-shrink-0" />
-
-              <div className="flex flex-col pr-2 max-h-[120px] overflow-y-auto">
-                {toolCall ? (
-                  <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                    <Terminal className="w-4 h-4 flex-shrink-0" />
-                    <span className="line-clamp-3">{toolCall}</span>
-                  </div>
-                ) : (
-                  <div className="text-sm font-medium leading-[1.4] text-foreground line-clamp-3">
-                    {isAgentWorking && !visibleFragment ? (
-                      <Shimmer duration={2} spread={2}>
-                        Thinking...
-                      </Shimmer>
-                    ) : (
-                      visibleFragment || 'Processing...'
-                    )}
-                  </div>
-                )}
-              </div>
-            </>
+            <div className="flex-[2] min-w-0 h-10 overflow-hidden">
+              <Conversation className="h-full flex items-center [&]:!overflow-visible" initial="smooth" resize="smooth">
+                <ConversationContent className="px-3 py-0">
+                  {messages.length === 0 ? (
+                    <div className="flex items-center h-full text-muted-foreground text-sm">
+                      Processing...
+                    </div>
+                  ) : (
+                    messages.map((message) => {
+                      const currentAgent = AVAILABLE_AGENTS.find((a) => a.name === DEFAULT_AGENT) || AVAILABLE_AGENTS[0];
+                      return (
+                        <Message
+                          className="items-start py-0"
+                          from={message.role as "user" | "assistant"}
+                          key={message.id}
+                        >
+                          <MessageContent className="text-sm py-0 px-2">
+                            {message.parts.map((part, index) =>
+                              renderMessagePart(
+                                part,
+                                message.id,
+                                index,
+                                status === "streaming",
+                                message.metadata as Record<string, unknown> | undefined
+                              )
+                            )}
+                          </MessageContent>
+                          {message.role === "assistant" && (
+                            <MessageAvatar
+                              name={currentAgent.name}
+                              src={currentAgent.meta?.icon ?? ""}
+                            />
+                          )}
+                        </Message>
+                      );
+                    })
+                  )}
+                  {status === "submitted" && <Loader />}
+                </ConversationContent>
+                <ConversationScrollButton />
+              </Conversation>
+            </div>
           )}
         </div>
 
-        <div 
+        <div
           className={cn(
             "flex items-center w-full gap-3 transition-all duration-500 delay-75",
             shouldShowInput
