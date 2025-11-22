@@ -189,7 +189,7 @@ export function useMcp() {
     );
 
     // Tool implementations
-    async function inspectElement(args: any) {
+    async function inspectElement() {
       cancelPendingRequest("New inspect request started");
       activateInspector();
 

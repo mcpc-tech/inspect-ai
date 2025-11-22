@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import { Eye, Sparkles, ArrowRight, Terminal, CheckCircle2, XCircle, ChevronUp } from 'lucide-react';
+import { Shimmer } from '../../src/components/ai-elements/shimmer';
 import type { UIMessage } from 'ai';
 import { processMessage, extractToolName } from '../utils/messageProcessor';
 import { FeedbackCart, type FeedbackItem } from './FeedbackCart';
@@ -34,12 +35,24 @@ export const InspectorBar = ({
   const [displayText, setDisplayText] = useState<string>('');
   const [toolCall, setToolCall] = useState<string | null>(null);
   const [toolResult, setToolResult] = useState<string | null>(null);
-  const [shouldMarquee, setShouldMarquee] = useState(false);
   const [isPanelExpanded, setIsPanelExpanded] = useState(false);
+  const [hideInputDuringWork, setHideInputDuringWork] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
+  const [lastDisplayedText, setLastDisplayedText] = useState<string>('');
+  const [lastDisplayedToolResult, setLastDisplayedToolResult] = useState<string>('');
+  const [allowHover, setAllowHover] = useState(true);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const textRef = useRef<HTMLDivElement>(null);
+
+  // Helper function to get only new content
+  const getNewContent = (currentContent: string, lastContent: string): string => {
+    if (!lastContent) return currentContent;
+    if (currentContent.startsWith(lastContent)) {
+      return currentContent.slice(lastContent.length).trim();
+    }
+    return currentContent;
+  };
 
   useEffect(() => {
     if (messages.length === 0) return;
@@ -47,10 +60,8 @@ export const InspectorBar = ({
     const last = messages[messages.length - 1];
     let currentTool: string | null = null;
 
+    // Only extract tool from current message, don't look at previous messages
     currentTool = extractToolName(last);
-    if (!currentTool && messages.length > 1) {
-      currentTool = extractToolName(messages[messages.length - 2]);
-    }
 
     // Process message using utility functions
     const { displayText, toolOutput, toolCall: extractedToolCall } = processMessage(last, currentTool);
@@ -64,21 +75,6 @@ export const InspectorBar = ({
     setToolCall(extractedToolCall);
   }, [messages]);
 
-  // Check if text needs marquee effect
-  useEffect(() => {
-    if (!textRef.current || !displayText) {
-      setShouldMarquee(false);
-      return;
-    }
-
-    // Check if text is longer than container
-    const textWidth = textRef.current.scrollWidth;
-    const containerWidth = textRef.current.clientWidth;
-    setShouldMarquee(textWidth > containerWidth);
-  }, [displayText]);
-
-  // --- End Message Processing Logic ---
-
   // Auto-focus input when expanded
   useEffect(() => {
     if (isExpanded && inputRef.current) {
@@ -86,9 +82,38 @@ export const InspectorBar = ({
     }
   }, [isExpanded]);
 
+  // Unlock immediately when AI finishes working, but delay hover to show result
+  useEffect(() => {
+    if (!isAgentWorking && isLocked) {
+      // Unlock immediately, but keep showing the content
+      setHideInputDuringWork(false);
+      setIsLocked(false);
+      // Clear tool states when work is done
+      setToolCall(null);
+      setToolResult(null);
+      // Temporarily disable hover to show result
+      setAllowHover(false);
+      // Re-enable hover after 2 seconds
+      const timer = setTimeout(() => {
+        setAllowHover(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isAgentWorking, isLocked]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
+
+    // Clear tool states immediately when submitting new input
+    setToolCall(null);
+    setToolResult(null);
+    setDisplayText('');
+    setHideInputDuringWork(true);
+    setIsLocked(true);
+    // Reset tracking for new query
+    setLastDisplayedText('');
+    setLastDisplayedToolResult('');
 
     onSubmitAgent(input);
     setInput('');
@@ -112,7 +137,8 @@ export const InspectorBar = ({
 
   const isError = status === 'error';
   const hasMessage = messages.length > 0;
-  const showMessage = !isExpanded && (isAgentWorking || hasMessage);
+  const shouldShowInput = isExpanded && !hideInputDuringWork;
+  const showMessage = (!isExpanded || hideInputDuringWork) && (isAgentWorking || hasMessage);
 
   return (
     <div
@@ -120,17 +146,25 @@ export const InspectorBar = ({
       className={cn(
         "fixed bottom-8 left-1/2 transform-center-x z-[999999]",
         "transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]",
-        isExpanded ? "w-[600px]" : (showMessage ? "w-auto max-w-[500px]" : "w-[160px]")
+        isExpanded ? "w-[600px]" : (showMessage ? "w-auto min-w-[200px] max-w-[600px]" : "w-[160px]")
       )}
-      onMouseEnter={() => setIsExpanded(true)}
+      onMouseEnter={() => {
+        if (!isLocked && allowHover) {
+          setIsExpanded(true);
+        }
+      }}
       onMouseLeave={() => {
-        if (!input.trim() && !isPanelExpanded) setIsExpanded(false);
+        if (!input.trim() && !isPanelExpanded && !isLocked) {
+          setIsExpanded(false);
+        }
+        // Re-enable hover when mouse leaves
+        setAllowHover(true);
       }}
     >
       <div className={cn(
         "relative flex items-center backdrop-blur-xl shadow-2xl border border-border overflow-hidden",
         "transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]",
-        isExpanded ? "h-14 p-2 pl-4" : "h-12 px-3",
+        isExpanded ? "min-h-14 p-2 pl-4" : "min-h-12 px-3 py-2",
         isPanelExpanded
           ? "bg-muted/95 rounded-b-xl rounded-t-none border-t-0"
           : "bg-muted/90 rounded-full",
@@ -138,7 +172,7 @@ export const InspectorBar = ({
       )}>
         <div className={cn(
           "flex items-center gap-3 transition-opacity duration-300",
-          isExpanded ? "absolute left-3 opacity-0 pointer-events-none" : "relative opacity-100"
+          shouldShowInput ? "absolute left-3 opacity-0 pointer-events-none" : "relative opacity-100"
         )}>
           {!showMessage && (
             <>
@@ -166,36 +200,24 @@ export const InspectorBar = ({
 
               <div className="w-px h-6 bg-border flex-shrink-0" />
 
-              <div className="flex flex-col min-w-[100px] max-w-[300px] pr-2">
+              <div className="flex flex-col pr-2 max-h-[120px] overflow-y-auto">
                 {toolResult ? (
-                  <div className="text-sm font-medium leading-tight truncate text-green-400 dark:text-green-600">
-                    <span className="truncate">{toolResult.length > 50 ? toolResult.substring(0, 50) + '...' : toolResult}</span>
+                  <div className="text-sm font-medium leading-[1.4] text-green-400 dark:text-green-600 line-clamp-3">
+                    <span>{getNewContent(toolResult, lastDisplayedToolResult)}</span>
                   </div>
                 ) : toolCall ? (
                   <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                    <Terminal className="w-4 h-4" />
-                    <span className="truncate">{toolCall}</span>
+                    <Terminal className="w-4 h-4 flex-shrink-0" />
+                    <span className="line-clamp-3">{toolCall}</span>
                   </div>
                 ) : (
-                  <div className="relative overflow-hidden w-[300px]">
-                    {shouldMarquee ? (
-                      <div className="relative w-full overflow-hidden">
-                        <div
-                          ref={textRef}
-                          className="inline-block text-sm font-medium leading-tight text-foreground whitespace-nowrap animate-marquee"
-                        >
-                          {displayText}
-                          <span className="mx-8">•</span>
-                          {displayText}
-                        </div>
-                      </div>
+                  <div className="text-sm font-medium leading-[1.4] text-foreground line-clamp-3">
+                    {isAgentWorking ? (
+                      <Shimmer duration={2} spread={2}>
+                        Thinking...
+                      </Shimmer>
                     ) : (
-                      <div
-                        ref={textRef}
-                        className="text-sm font-medium leading-tight text-foreground whitespace-nowrap truncate"
-                      >
-                        {displayText || (isAgentWorking ? "Thinking..." : "Ready")}
-                      </div>
+                      getNewContent(displayText, lastDisplayedText)
                     )}
                   </div>
                 )}
@@ -204,12 +226,15 @@ export const InspectorBar = ({
           )}
         </div>
 
-        <div className={cn(
-          "flex items-center w-full gap-3 transition-all duration-500 delay-75",
-          isExpanded
-            ? "opacity-100 translate-y-0 relative pointer-events-auto"
-            : "opacity-0 translate-y-4 pointer-events-none absolute top-2 left-4 right-2"
-        )}>
+        <div 
+          className={cn(
+            "flex items-center w-full gap-3 transition-all duration-500 delay-75",
+            shouldShowInput
+              ? "opacity-100 translate-y-0 relative pointer-events-auto"
+              : "opacity-0 translate-y-4 pointer-events-none absolute top-2 left-4 right-2"
+          )}
+          onClick={(e) => e.stopPropagation()}
+        >
           <button
             onClick={onToggleInspector}
             className={cn(
@@ -230,7 +255,7 @@ export const InspectorBar = ({
 
           <div className="w-px h-6 bg-border flex-shrink-0" />
 
-          <form onSubmit={handleSubmit} className="flex-1 flex items-center gap-2 min-w-0">
+          <form onSubmit={handleSubmit} className="flex-1 flex items-center gap-2 min-w-0" onClick={(e) => e.stopPropagation()}>
             <input
               ref={inputRef}
               type="text"
@@ -239,6 +264,7 @@ export const InspectorBar = ({
               onKeyDown={handleKeyDown}
               placeholder="Ask AI to check something..."
               className="w-full bg-transparent border-none outline-none text-foreground placeholder-muted-foreground text-base h-10"
+              tabIndex={0}
             />
 
             {/* Expand button */}

@@ -80,22 +80,22 @@ export async function createInspectorMcpServer() {
       { capabilities: { tools: {}, sampling: {}, prompts: {} } },
     ],
     [
-      {
-        name: "inspector",
-        description: `Open chrome with devtools connected, to inspect the development environment with network and performance tools.`,
-        options: {
-          refs: ['<tool name="chrome.__ALL__"/>'],
-        },
-        deps: {
-          mcpServers: {
-            chrome: {
-              transportType: "stdio",
-              command: "node",
-              args: [getChromeDevToolsBinPath()],
-            },
-          },
-        },
-      },
+      // {
+      //   name: "inspector",
+      //   description: `Open chrome with devtools connected, to inspect the development environment with network and performance tools.`,
+      //   options: {
+      //     refs: ['<tool name="chrome.__ALL__"/>'],
+      //   },
+      //   deps: {
+      //     mcpServers: {
+      //       chrome: {
+      //         transportType: "stdio",
+      //         command: "node",
+      //         args: [getChromeDevToolsBinPath()],
+      //       },
+      //     },
+      //   },
+      // },
     ]
   );
 
@@ -139,7 +139,7 @@ export async function createInspectorMcpServer() {
     if (request.params.name === "grab-element") {
       const element = (await callMcpMethod(mcpServer, "tools/call", {
         name: "inspect_element",
-        arguments: { prompt: "Select an element" },
+        arguments: { },
       })) as CallToolResult;
 
       return {

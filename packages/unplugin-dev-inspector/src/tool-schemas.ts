@@ -6,21 +6,18 @@
 export const TOOL_SCHEMAS = {
   inspect_element: {
     name: "inspect_element",
-    description: "Activate the visual element inspector to let the user select a UI element on the page. The user will click an element and provide feedback about what they want to change. Returns the source code location and user feedback.",
+    description:
+      "Activate the visual element inspector to let the user select a UI element on the page. The user will click an element and provide feedback about what they want to change. Returns the source code location and user feedback.",
     inputSchema: {
       type: "object" as const,
-      properties: {
-        prompt: {
-          type: "string",
-          description: "Message to display to the user while they select an element (e.g., 'Please click the button you want to modify')",
-        },
-      },
+      properties: {},
     },
   },
 
   get_all_feedbacks: {
     name: "get_all_feedbacks",
-    description: "Get a list of all current feedback items in the queue, including their status (pending/loading/success/error) and progress. Use this to see what tasks are already being worked on.",
+    description:
+      "Get a list of all current feedback items in the queue, including their status (pending/loading/success/error) and progress. Use this to see what tasks are already being worked on.",
     inputSchema: {
       type: "object" as const,
       properties: {},
@@ -29,18 +26,21 @@ export const TOOL_SCHEMAS = {
 
   update_feedback_status: {
     name: "update_feedback_status",
-    description: "Update the status of the current feedback item in the user's queue. Use this to show progress or mark completion.",
+    description:
+      "Update the status of the current feedback item in the user's queue. Use this to show progress or mark completion.",
     inputSchema: {
       type: "object" as const,
       properties: {
         feedbackId: {
           type: "string",
-          description: "Optional feedback ID. If not provided, will use the most recent loading feedback or the one from session.",
+          description:
+            "Optional feedback ID. If not provided, will use the most recent loading feedback or the one from session.",
         },
         status: {
           type: "string",
           enum: ["in-progress", "completed", "failed"],
-          description: "Current status: 'in-progress' for updates, 'completed' when done, 'failed' on error",
+          description:
+            "Current status: 'in-progress' for updates, 'completed' when done, 'failed' on error",
         },
         progress: {
           type: "object",
@@ -65,7 +65,8 @@ export const TOOL_SCHEMAS = {
         },
         message: {
           type: "string",
-          description: "Status message or completion summary. REQUIRED when status is 'completed' or 'failed'",
+          description:
+            "Status message or completion summary. REQUIRED when status is 'completed' or 'failed'",
         },
       },
       required: ["status"] as string[],
