@@ -84,6 +84,20 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({
   }, [isActive]);
 
   useEffect(() => {
+    const handleActivateInspector = () => {
+      if (!isActive) {
+        setIsActive(true);
+        document.body.style.cursor = "crosshair";
+        setBubbleMode(null);
+        showNotif("🔍 Inspector ON - Click any element");
+      }
+    };
+
+    window.addEventListener("activate-inspector", handleActivateInspector);
+    return () => window.removeEventListener("activate-inspector", handleActivateInspector);
+  }, [isActive, showNotif]);
+
+  useEffect(() => {
     saveFeedbackItems(feedbackItems);
   }, [feedbackItems]);
 
