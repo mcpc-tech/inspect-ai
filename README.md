@@ -14,7 +14,7 @@ tags:
 
 # @mcpc-tech/unplugin-dev-inspector-mcp
 
-Universal dev inspector plugin for React - inspect component sources and API calls in any bundler.
+Universal dev inspector plugin for React and Vue - inspect component sources and API calls in any bundler.
 
 ## Monorepo Structure
 
@@ -42,12 +42,25 @@ pnpm dev:demo
 
 Works with Vite, Webpack, Rollup, esbuild, and Rspack.
 
+### React
+
 ```typescript
 // vite.config.ts
 import DevInspector from '@mcpc-tech/unplugin-dev-inspector-mcp/vite';
 
 export default {
   plugins: [DevInspector(), react()],
+};
+```
+
+### Vue
+
+```typescript
+// vite.config.ts
+import DevInspector from '@mcpc-tech/unplugin-dev-inspector-mcp/vite';
+
+export default {
+  plugins: [DevInspector(), vue()],
 };
 ```
 
