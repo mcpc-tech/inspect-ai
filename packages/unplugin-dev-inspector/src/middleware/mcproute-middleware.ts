@@ -5,12 +5,12 @@ import { randomUUID } from "crypto";
 import type { Connect } from "vite";
 import { bindPuppet } from "@mcpc-tech/cmcp";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { createInspectorMcpServer } from "../mcp";
+import { createInspectorMcpServer, type ServerContext } from "../mcp";
 
 /**
  * Setup MCP server endpoints in Vite dev server
  */
-export async function setupMcpMiddleware(middlewares: Connect.Server) {
+export async function setupMcpMiddleware(middlewares: Connect.Server, serverContext?: ServerContext) {
   const transports: Record<
     string,
     StreamableHTTPServerTransport | SSEServerTransport
@@ -19,7 +19,7 @@ export async function setupMcpMiddleware(middlewares: Connect.Server) {
   middlewares.use(
     async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
       const url = req.url || "";
-      const mcpServer = await createInspectorMcpServer();
+      const mcpServer = await createInspectorMcpServer(serverContext);
 
       // Streamable HTTP endpoint
       if (
@@ -214,7 +214,7 @@ async function handleSseConnection(
     }
 
     if (puppetId) {
-      if (!transports[puppetId]){
+      if (!transports[puppetId]) {
         // throw new Error(`Puppet ${puppetId} not found`);
       }
 
@@ -235,7 +235,7 @@ async function handleSseConnection(
         // @ts-expect-error - unbindPuppet is added by bindPuppet
         boundTransport.unbindPuppet();
       }
-      
+
       delete transports[sessionId];
       if (aliasSessionId) {
         delete transports[aliasSessionId];

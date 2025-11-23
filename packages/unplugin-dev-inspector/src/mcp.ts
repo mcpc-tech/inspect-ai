@@ -9,6 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { PROMPT_SCHEMAS } from "./prompt-schemas.js";
 import { TOOL_SCHEMAS } from "./tool-schemas.js";
 
 /**
@@ -65,10 +66,15 @@ function callMcpMethod(
   });
 }
 
+export interface ServerContext {
+  host?: string;
+  port?: number;
+}
+
 /**
  * Create and configure the MCP server for source inspection
  */
-export async function createInspectorMcpServer() {
+export async function createInspectorMcpServer(serverContext?: ServerContext) {
   const mcpServer = await mcpc(
     [
       {
@@ -77,93 +83,310 @@ export async function createInspectorMcpServer() {
         title:
           "A tool for inspecting and interacting with the development environment.",
       },
-      { capabilities: { tools: {}, sampling: {}, prompts: {} } },
+      {
+        capabilities: {
+          tools: {
+            listChanged: true
+          },
+          sampling: {},
+          prompts: {
+            listChanged: true
+          }
+        }
+      },
     ],
     [
-      // {
-      //   name: "inspector",
-      //   description: `Open chrome with devtools connected, to inspect the development environment with network and performance tools.`,
-      //   options: {
-      //     refs: ['<tool name="chrome.__ALL__"/>'],
-      //   },
-      //   deps: {
-      //     mcpServers: {
-      //       chrome: {
-      //         transportType: "stdio",
-      //         command: "node",
-      //         args: [getChromeDevToolsBinPath()],
-      //       },
-      //     },
-      //   },
-      // },
-    ]
+      {
+        name: "chrome_devtools",
+        description: `Access Chrome DevTools for browser diagnostics.
+
+Provides tools for inspecting network requests, console logs, and performance metrics.
+
+IMPORTANT: Must first call chrome_navigate_page to launch Chrome before using these capabilities.
+Default dev server URL: http://${serverContext?.host || 'localhost'}:${serverContext?.port || 5173}
+
+You MUST ask the user for confirmation before navigating to any URL.`,
+        options: {
+          refs: ['<tool name="chrome.__ALL__"/>'],
+        },
+        deps: {
+          mcpServers: {
+            chrome: {
+              transportType: "stdio",
+              command: "node",
+              args: [getChromeDevToolsBinPath()],
+            },
+          },
+        },
+      },
+    ],
   );
 
   const mcpClientExecServer = createClientExecServer(mcpServer, "inspector");
 
+  // Client tools
   mcpClientExecServer.registerClientToolSchemas([
     {
-      ...TOOL_SCHEMAS.inspect_element,
+      ...TOOL_SCHEMAS.capture_element_context,
     },
     {
-      ...TOOL_SCHEMAS.get_all_feedbacks,
+      ...TOOL_SCHEMAS.list_inspections,
     },
     {
-      ...TOOL_SCHEMAS.update_feedback_status,
+      ...TOOL_SCHEMAS.update_inspection_status,
+    },
+    {
+      ...TOOL_SCHEMAS.execute_page_script,
     },
   ])
 
   // Prompts
   mcpServer.setRequestHandler(ListPromptsRequestSchema, async (request) => {
+    const defaultUrl = `http://${serverContext?.host || 'localhost'}:${serverContext?.port || 5173}`;
+
     return {
       prompts: [
         {
-          name: "grab-element",
-          title: "Inspect Element",
-          description:
-            "Inspect a UI element and get user feedback for modifications.",
-          arguments: [],
+          ...PROMPT_SCHEMAS.capture_element,
         },
         {
-          name: "view-feedbacks",
-          title: "View All Feedbacks",
-          description:
-            "View all current feedback items in the queue with their status.",
-          arguments: [],
+          ...PROMPT_SCHEMAS.view_inspections,
         },
+        {
+          ...PROMPT_SCHEMAS.launch_chrome_devtools,
+          description: `Launch Chrome DevTools and navigate to the dev server for debugging and inspection. Default URL: ${defaultUrl}. You can use this default URL or provide a custom one.`,
+          arguments: [
+            {
+              name: "url",
+              description: `The URL to navigate to. Press Enter to use default: ${defaultUrl}`,
+              required: false,
+            },
+          ],
+        },
+        {
+          ...PROMPT_SCHEMAS.refresh_chrome_state,
+        }
       ],
     };
   });
 
   mcpServer.setRequestHandler(GetPromptRequestSchema, async (request) => {
-    if (request.params.name === "grab-element") {
-      const element = (await callMcpMethod(mcpServer, "tools/call", {
-        name: "inspect_element",
-        arguments: { },
-      })) as CallToolResult;
+    const promptName = request.params.name as keyof typeof PROMPT_SCHEMAS;
 
-      return {
-        messages:
-          element?.content.map((item) => ({
-            role: "user",
-            content: item,
-          })) || [],
-      } as GetPromptResult;
-    } else if (request.params.name === "view-feedbacks") {
-      const feedbacks = (await callMcpMethod(mcpServer, "tools/call", {
-        name: "get_all_feedbacks",
-        arguments: {},
-      })) as CallToolResult;
+    switch (promptName) {
+      case "capture_element": {
+        const element = (await callMcpMethod(mcpServer, "tools/call", {
+          name: "capture_element_context",
+          arguments: {},
+        })) as CallToolResult;
 
-      return {
-        messages:
-          feedbacks?.content.map((item) => ({
-            role: "user",
-            content: item,
-          })) || [],
-      } as GetPromptResult;
-    } else {
-      throw new Error(`Unknown promptId: ${request.params.name}`);
+        return {
+          messages:
+            element?.content.map((item) => ({
+              role: "user",
+              content: item,
+            })) || [],
+        } as GetPromptResult;
+      }
+
+      case "view_inspections": {
+        const inspections = (await callMcpMethod(mcpServer, "tools/call", {
+          name: "list_inspections",
+          arguments: {},
+        })) as CallToolResult;
+
+        return {
+          messages:
+            inspections?.content.map((item) => ({
+              role: "user",
+              content: item,
+            })) || [],
+        } as GetPromptResult;
+      }
+
+      case "launch_chrome_devtools": {
+        const defaultUrl = `http://${serverContext?.host || 'localhost'}:${serverContext?.port || 5173}`;
+        const url = (request.params.arguments?.url as string | undefined) || defaultUrl;
+
+        try {
+          new URL(url);
+        } catch (error) {
+          return {
+            messages: [
+              {
+                role: "user",
+                content: {
+                  type: "text",
+                  text: `Error: Invalid URL format: "${url}". Please provide a valid URL (e.g., http://localhost:5173)`,
+                },
+              },
+            ],
+          } as GetPromptResult;
+        }
+
+        try {
+          const result = (await callMcpMethod(mcpServer, "tools/call", {
+            name: "chrome_devtools",
+            arguments: {
+              useTool: 'chrome_navigate_page',
+              hasDefinitions: [
+                'chrome_navigate_page'
+              ],
+              chrome_navigate_page: {
+                url,
+              }
+            },
+          })) as CallToolResult;
+
+
+
+          return {
+            messages: [
+              ...(result?.content || []).map((item) => ({
+                role: "user" as const,
+                content: item,
+              })),
+            ],
+          } as GetPromptResult;
+        } catch (error) {
+          return {
+            messages: [
+              {
+                role: "user",
+                content: {
+                  type: "text",
+                  text: `Error launching Chrome DevTools: ${error instanceof Error ? error.message : String(error)}`,
+                },
+              },
+            ],
+          } as GetPromptResult;
+        }
+      }
+
+      case 'refresh_chrome_state':
+        try {
+          const result = (await callMcpMethod(mcpServer, "tools/call", {
+            name: "chrome_devtools",
+            arguments: {
+              useTool: 'chrome_list_network_requests',
+              hasDefinitions: [
+                'chrome_list_network_requests'
+              ],
+              chrome_list_network_requests: {}
+            },
+          })) as CallToolResult;
+          // Extract reqIds from the network requests text
+          const requestsText = result?.content?.map((item) => item.text).join('\n') || '';
+          const reqIdMatches = requestsText.matchAll(/reqid=(\d+)\s+(GET|POST|PUT|DELETE|PATCH)\s+([^\s]+)\s+\[([^\]]+)\]/g);
+          const requestOptions = Array.from(reqIdMatches)
+            .map(match => {
+              const [, reqId, method, url, status] = match;
+              // Truncate long URLs to 60 characters with ellipsis
+              const truncatedUrl = url.length > 60 ? url.substring(0, 57) + '...' : url;
+              return `  ${reqId}: ${method} ${truncatedUrl} [${status}]`;
+            })
+            .reverse() // Show newest requests first
+            .join('\n');
+
+          // Dynamically update the prompts arguments
+          mcpServer.setRequestHandler(ListPromptsRequestSchema, async (request) => {
+            return {
+              prompts: [
+                {
+                  ...PROMPT_SCHEMAS.capture_element,
+                },
+                {
+                  ...PROMPT_SCHEMAS.view_inspections,
+                },
+                {
+                  ...PROMPT_SCHEMAS.launch_chrome_devtools,
+                },
+                {
+                  ...PROMPT_SCHEMAS.refresh_chrome_state,
+                },
+                {
+                  ...PROMPT_SCHEMAS.get_network_requests,
+                  // TODO: currently, MCP prompt arguments are not typed, and can only be strings,
+                  // see https://github.com/modelcontextprotocol/modelcontextprotocol/issues/136
+                  arguments: [
+                    {
+                      name: "reqid",
+                      description: `The request ID to get details for. Available requests:\n\n${requestOptions || 'No requests available'}`,
+                      required: true,
+                    }
+                  ]
+                }
+              ],
+            };
+          });
+
+          await mcpServer.sendPromptListChanged()
+
+          return {
+            messages: [
+              ...(result?.content || []).map((item) => ({
+                role: "user" as const,
+                content: item,
+              })),
+            ],
+          } as GetPromptResult;
+        } catch (error) {
+          return {
+            messages: [
+              {
+                role: "user",
+                content: {
+                  type: "text",
+                  text: `Error launching Chrome DevTools: ${error instanceof Error ? error.message : String(error)}`,
+                },
+              },
+            ],
+          } as GetPromptResult;
+        }
+
+      case 'get_network_requests':
+        const reqid = parseInt(request.params.arguments?.reqid as string);
+        try {
+          const result = (await callMcpMethod(mcpServer, "tools/call", {
+            name: "chrome_devtools",
+            arguments: {
+              useTool: 'chrome_get_network_request',
+              hasDefinitions: [
+                'chrome_get_network_request'
+              ],
+              chrome_get_network_request: {
+                reqid
+              }
+            },
+          })) as CallToolResult;
+
+
+
+          return {
+            messages: [
+              ...(result?.content || []).map((item) => ({
+                role: "user" as const,
+                content: item,
+              })),
+            ],
+          } as GetPromptResult;
+        } catch (error) {
+          return {
+            messages: [
+              {
+                role: "user",
+                content: {
+                  type: "text",
+                  text: `Error launching Chrome DevTools: ${error instanceof Error ? error.message : String(error)}`,
+                },
+              },
+            ],
+          } as GetPromptResult;
+        }
+
+
+      default:
+        throw new Error(`Unknown promptId: ${promptName}`);
     }
   });
 

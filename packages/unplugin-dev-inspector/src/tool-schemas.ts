@@ -4,43 +4,43 @@
  */
 
 export const TOOL_SCHEMAS = {
-  inspect_element: {
-    name: "inspect_element",
+  capture_element_context: {
+    name: "capture_element_context",
     description:
-      "Activate the visual element inspector to let the user select a UI element on the page. The user will click an element and provide feedback about what they want to change. Returns the source code location and user feedback.",
+      "Capture element context for troubleshooting. Activates visual selector, user clicks element and provides notes, returns source location, DOM hierarchy, computed styles, dimensions, and user notes. Combine with chrome_devtools MCP for deeper diagnostics (Network, Console, Performance, DOM tools).",
     inputSchema: {
       type: "object" as const,
       properties: {},
     },
   },
 
-  get_all_feedbacks: {
-    name: "get_all_feedbacks",
+  list_inspections: {
+    name: "list_inspections",
     description:
-      "Get a list of all current feedback items in the queue, including their status (pending/loading/success/error) and progress. Use this to see what tasks are already being worked on.",
+      "List all captured inspections with ID, element details, source location, notes, and status (pending/in-progress/completed/failed). Use with chrome_devtools for additional context (Console.getMessages, Network.getHAR, Performance.getMetrics).",
     inputSchema: {
       type: "object" as const,
       properties: {},
     },
   },
 
-  update_feedback_status: {
-    name: "update_feedback_status",
+  update_inspection_status: {
+    name: "update_inspection_status",
     description:
-      "Update the status of the current feedback item in the user's queue. Use this to show progress or mark completion.",
+      "Update inspection status with optional progress tracking.\n\n**Parameters**:\n- inspectionId: Optional (auto-detects if omitted)\n- status: 'in-progress' | 'completed' | 'failed'\n- progress: Optional steps array [{id, title, status}]\n- message: REQUIRED for 'completed'/'failed' status\n\n**Example**:\n```javascript\nupdate_inspection_status({\n  status: 'completed',\n  message: 'Fixed: pointer-events: none blocking clicks'\n});\n```",
     inputSchema: {
       type: "object" as const,
       properties: {
-        feedbackId: {
+        inspectionId: {
           type: "string",
           description:
-            "Optional feedback ID. If not provided, will use the most recent loading feedback or the one from session.",
+            "Optional inspection ID. If not provided, uses the current active inspection.",
         },
         status: {
           type: "string",
           enum: ["in-progress", "completed", "failed"],
           description:
-            "Current status: 'in-progress' for updates, 'completed' when done, 'failed' on error",
+            "Current status: 'in-progress' for updates, 'completed' when resolved, 'failed' if unresolvable",
         },
         progress: {
           type: "object",
@@ -61,15 +61,32 @@ export const TOOL_SCHEMAS = {
               },
             },
           },
-          description: "Optional progress info with step-by-step details",
+          description: "Optional step-by-step progress tracking",
         },
         message: {
           type: "string",
           description:
-            "Status message or completion summary. REQUIRED when status is 'completed' or 'failed'",
+            "Summary of findings or resolution. REQUIRED when status is 'completed' or 'failed'",
         },
       },
       required: ["status"] as string[],
+    },
+  },
+
+  execute_page_script: {
+    name: "execute_page_script",
+    description:
+      "Execute JavaScript in browser context (synchronous only, must return value). Access: window, document, DOM APIs, React/Vue instances, localStorage. For deeper diagnostics, use chrome_devtools MCP (Network.getHAR, Console.getMessages, Performance.getMetrics, Debugger, HeapProfiler).",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        code: {
+          type: "string",
+          description:
+            "JavaScript code to execute in page context. Must return a value for diagnostic output.",
+        },
+      },
+      required: ["code"] as string[],
     },
   },
 } as const;
