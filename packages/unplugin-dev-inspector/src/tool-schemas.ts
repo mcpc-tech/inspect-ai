@@ -4,43 +4,43 @@
  */
 
 export const TOOL_SCHEMAS = {
-  inspect_element: {
-    name: "inspect_element",
+  capture_element_context: {
+    name: "capture_element_context",
     description:
-      "Activate the visual element inspector to let the user select a UI element on the page. The user will click an element and provide feedback about what they want to change. Returns the source code location and user feedback.\n\n**Usage Workflow**:\n1. Call this tool to activate the inspector\n2. User clicks an element on the page\n3. User provides feedback describing desired changes\n4. Tool returns comprehensive context including:\n   - Source file location (file, line, column)\n   - Component name\n   - DOM structure and hierarchy\n   - Complete computed styles (categorized)\n   - Element bounding box and position\n   - User's feedback text\n\n**Returned Data Structure**:\n- **Source Code**: File path, line number, component name\n- **DOM Element**: Tag, ID, classes, attributes, text content, DOM path\n- **Styles**: Categorized styles (layout, typography, spacing, background, border, effects, flexbox, grid)\n- **Position**: Bounding box with coordinates and dimensions\n- **User Request**: The user's feedback describing what to change",
+      "Capture comprehensive context about a page element for troubleshooting.\n\n**Workflow**:\n1. Activates visual element selector overlay\n2. User clicks on element they want to investigate\n3. User provides notes/questions about the element\n4. Returns complete context package\n\n**Returned Context**:\n- Source code location (file, line, component)\n- DOM structure and hierarchy\n- All computed styles (categorized by: layout, typography, spacing, background, border, effects, flexbox, grid)\n- Element position and dimensions\n- User's notes/questions\n\n**Use Cases**:\n- \"Why isn't this button clickable?\"\n- \"Where is this component defined?\"\n- \"What styles are applied to this element?\"\n- \"Why does this layout look broken?\"\n\n**Working with chrome-devtools**:\nFor deeper browser diagnostics, combine with Chrome DevTools MCP:\n- Use chrome.Network.* tools to inspect network requests related to this element\n- Use chrome.Console.* tools to check for JavaScript errors\n- Use chrome.Performance.* tools to measure rendering performance\n- Use chrome.DOM.* tools to inspect live DOM modifications",
     inputSchema: {
       type: "object" as const,
       properties: {},
     },
   },
 
-  get_all_feedbacks: {
-    name: "get_all_feedbacks",
+  list_inspections: {
+    name: "list_inspections",
     description:
-      "Get a list of all current feedback items in the queue, including their status (pending/loading/success/error) and progress. Use this to see what tasks are already being worked on.\n\n**Feedback Status Lifecycle**:\n- **pending**: New feedback, not yet started\n- **loading**: Currently being processed by an agent\n- **success**: Successfully completed\n- **error**: Failed with an error\n\n**When to Use**:\n- Before starting new work to check existing queue\n- To find feedback IDs for status updates\n- To batch process multiple related feedback items\n- To check status of ongoing work\n\n**Processing Best Practices**:\n1. Review all pending items before starting\n2. Group related feedback items together\n3. Process in order of priority/dependency\n4. Use update_feedback_status to track progress\n5. Handle dependencies between items carefully",
+      "List all captured element inspections in the work queue.\n\n**Returns for each inspection**:\n- Inspection ID (use with update_inspection_status)\n- Element details (tag, classes, text content)\n- Source location (file, line, component)\n- User's notes/questions\n- Current status (pending/in-progress/completed/failed)\n- Progress details (if available)\n\n**Inspection Status Lifecycle**:\n- **pending**: Not started yet, awaiting investigation\n- **in-progress**: Currently being investigated/debugged\n- **completed**: Issue resolved or question answered\n- **failed**: Unable to resolve or need more information\n\n**Use Cases**:\n- Review what user has marked for investigation\n- Find inspection IDs for status updates\n- Batch process related diagnostic issues\n- Track multiple troubleshooting sessions\n\n**Best Practices**:\n1. Check queue before starting new investigations\n2. Group related inspections together\n3. Process in order of priority\n4. Update status as you make progress\n\n**Working with chrome-devtools**:\nFor each inspection, you can use Chrome DevTools to gather additional context:\n- Check console logs: chrome.Console.getMessages()\n- Inspect network traffic: chrome.Network.getHAR()\n- Profile performance: chrome.Performance.getMetrics()",
     inputSchema: {
       type: "object" as const,
       properties: {},
     },
   },
 
-  update_feedback_status: {
-    name: "update_feedback_status",
+  update_inspection_status: {
+    name: "update_inspection_status",
     description:
-      "Update the status of the current feedback item in the user's queue. Use this to show progress or mark completion.\n\n**Status Transitions**:\n1. **in-progress**: Call when starting work or making progress\n   - Include progress.steps array to show detailed progress\n   - Update periodically as you complete steps\n   \n2. **completed**: Call when work is successfully finished\n   - REQUIRED: Include message with completion summary\n   - Describe what was changed/accomplished\n   \n3. **failed**: Call if unable to complete the task\n   - REQUIRED: Include message with error explanation\n   - Suggest next steps or alternatives if possible\n\n**Progress Reporting**:\n- Provide step-by-step progress updates\n- Keep steps concise and descriptive\n- Update as each major step completes\n- Helps user understand what's happening\n\n**Examples**:\n```javascript\n// Starting work\nupdate_feedback_status({\n  status: 'in-progress',\n  progress: {\n    steps: [\n      { id: 1, title: 'Reading source file', status: 'completed' },\n      { id: 2, title: 'Modifying styles', status: 'in-progress' },\n      { id: 3, title: 'Testing changes', status: 'pending' }\n    ]\n  }\n});\n\n// Completing work\nupdate_feedback_status({\n  status: 'completed',\n  message: 'Updated button color to blue and increased padding by 8px'\n});\n```",
+      "Update the status of an element inspection to track investigation progress.\n\n**Parameters**:\n- **inspectionId**: Which inspection (optional - auto-detects current)\n- **status**: 'in-progress' | 'completed' | 'failed'\n- **progress**: Optional step-by-step progress details\n- **message**: Summary (REQUIRED for completed/failed)\n\n**Status Transitions**:\n\n1. **in-progress**: Starting or continuing investigation\n   - Include progress.steps to show detailed diagnostic steps\n   - Update as you discover information\n\n2. **completed**: Investigation finished, issue resolved or question answered\n   - REQUIRED: Include message with findings/solution\n   - Example: \"Root cause: z-index conflict. Fixed by updating CSS.\"\n\n3. **failed**: Cannot resolve or need more user information\n   - REQUIRED: Include message explaining why\n   - Example: \"Cannot reproduce issue. Need user to provide steps.\"\n\n**Examples**:\n```javascript\n// Starting investigation\nupdate_inspection_status({\n  status: 'in-progress',\n  progress: {\n    steps: [\n      { id: 1, title: 'Checking computed styles', status: 'completed' },\n      { id: 2, title: 'Testing interactivity', status: 'in-progress' },\n      { id: 3, title: 'Finding root cause', status: 'pending' }\n    ]\n  }\n});\n\n// Completing investigation\nupdate_inspection_status({\n  status: 'completed',\n  message: 'Found issue: pointer-events: none style blocking clicks. Removed the style.'\n});\n\n// Unable to resolve\nupdate_inspection_status({\n  status: 'failed',\n  message: 'Element not found in DOM. May be conditionally rendered. Need reproduction steps.'\n});\n```",
     inputSchema: {
       type: "object" as const,
       properties: {
-        feedbackId: {
+        inspectionId: {
           type: "string",
           description:
-            "Optional feedback ID. If not provided, will use the most recent loading feedback or the one from session.",
+            "Optional inspection ID. If not provided, uses the current active inspection.",
         },
         status: {
           type: "string",
           enum: ["in-progress", "completed", "failed"],
           description:
-            "Current status: 'in-progress' for updates, 'completed' when done, 'failed' on error",
+            "Current status: 'in-progress' for updates, 'completed' when resolved, 'failed' if unresolvable",
         },
         progress: {
           type: "object",
@@ -61,37 +61,32 @@ export const TOOL_SCHEMAS = {
               },
             },
           },
-          description: "Optional progress info with step-by-step details",
+          description: "Optional step-by-step progress tracking",
         },
         message: {
           type: "string",
           description:
-            "Status message or completion summary. REQUIRED when status is 'completed' or 'failed'",
+            "Summary of findings or resolution. REQUIRED when status is 'completed' or 'failed'",
         },
       },
       required: ["status"] as string[],
     },
   },
 
-  patch_context: {
-    name: "patch_context",
+  execute_page_script: {
+    name: "execute_page_script",
     description:
-      "Retrieve additional runtime context for a previously inspected element. This tool queries the live DOM to get fresh data about an element from a feedback item.\n\n**When to Use**:\n- Need updated styles after making changes\n- Want to verify current DOM state\n- Need additional context not in original inspection\n- Debugging style/layout issues\n\n**Context Types**:\n- **styles**: Fresh computed styles (all categories)\n- **dom**: Current DOM state (attributes, position, hierarchy)\n- **events**: Event listeners attached to element (if available)\n- **all**: Complete context (default)\n\n**Returns**: Fresh snapshot of element's current runtime state",
+      "Execute JavaScript in the browser to extract runtime data. Code must return a value (synchronous only).\n\n**Access**: window, document, DOM APIs, React/Vue instances, localStorage, etc.\n\n**Examples**:\n```javascript\n// Check interactivity\nexecute_page_script({ code: `\n  const el = document.querySelector('.btn');\n  return { exists: !!el, visible: el?.offsetParent !== null };\n` })\n\n// Find hidden elements\nexecute_page_script({ code: `\n  return Array.from(document.querySelectorAll('*'))\n    .filter(el => !el.offsetParent)\n    .slice(0, 20).map(el => el.tagName);\n` })\n```\n\n**chrome-devtools Integration**:\nFor deeper diagnostics beyond quick queries:\n- Network: chrome.Network.getHAR() - inspect requests/timing\n- Console: chrome.Console.getMessages() - retrieve errors\n- Performance: chrome.Performance.getMetrics() - measure impact\n- Debugger: chrome.Debugger.* - set breakpoints\n- Memory: chrome.HeapProfiler.* - detect leaks",
     inputSchema: {
       type: "object" as const,
       properties: {
-        feedbackId: {
+        code: {
           type: "string",
-          description: "The feedback item ID to get context for",
-        },
-        contextType: {
-          type: "string",
-          enum: ["styles", "dom", "events", "all"],
-          description: "Type of context to retrieve (default: 'all')",
+          description:
+            "JavaScript code to execute in page context. Must return a value for diagnostic output.",
         },
       },
-      required: ["feedbackId"] as string[],
+      required: ["code"] as string[],
     },
   },
 } as const;
-

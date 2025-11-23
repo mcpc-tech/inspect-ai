@@ -60,7 +60,7 @@ function getAllFeedbacks() {
     const items = saved ? JSON.parse(saved) : [];
     
     if (items.length === 0) {
-      return createTextContent("# No Feedback Items\n\nThe queue is empty. Use 'inspect_element' to add tasks.");
+      return createTextContent("# No Feedback Items\n\nThe queue is empty. Use 'capture_element_context' to capture elements for investigation.");
     }
     
     const feedbackList = items.map((item: any, index: number) => {
@@ -82,7 +82,7 @@ ${feedback}
 ${result ? `**Result**: ${result}\n` : ''}---`;
     }).join('\n\n');
     
-    const hint = `\n\n## How to Update\n\nUse \`update_feedback_status\` tool to update any feedback:\n\n\`\`\`\nupdate_feedback_status({\n  feedbackId: "feedback-xxx",  // Copy from above\n  status: "completed",\n  message: "Your summary here"\n})\n\`\`\``;
+    const hint = `\n\n## How to Update\n\nUse \`update_inspection_status\` tool to update any inspection:\n\n\`\`\`\nupdate_inspection_status({\n  inspectionId: "feedback-xxx",  // Copy from above\n  status: "completed",\n  message: "Your findings here"\n})\n\`\`\``;
     
     return createTextContent(`# Feedback Queue (${items.length} items)\n\n${feedbackList}${hint}`);
   } catch (e) {
@@ -156,6 +156,13 @@ ${domInfo}
 ## User Request
 ${feedback}
 
+## Your Task
+1. Investigate or make changes based on the user's request
+2. Call 'update_inspection_status' to update progress:
+   - Use status="in-progress" with progress details while investigating
+   - Use status="completed" with findings/solution when done
+   - Use status="failed" with explanation if unable to resolve
+
 ## Debugging Tips
 
 If you encounter issues:
@@ -171,167 +178,51 @@ If you encounter issues:
 3. **Verify Element Exists**: Use the DOM path to confirm element is rendered
    - DOM Path: ${elementInfo?.domPath || 'Use browser inspector'}
    
-4. **Get Fresh Context**: Use patch_context tool to get current computed styles
-   - Helpful after making changes to verify they applied
-   - Can retrieve updated DOM state, styles, or events`);
+4. **Get Runtime Data**: Use execute_page_script tool to query current state
+   - Extract fresh computed styles
+   - Check element interactivity
+   - Access component instances (React/Vue)`);
 }
 
 function patchContext(args: any) {
-  const { feedbackId, contextType = 'all' } = args;
+  const { code } = args;
+  
+  if (!code || typeof code !== 'string') {
+    return createTextContent('Error: Missing or invalid "code" parameter. Please provide JavaScript code to execute.');
+  }
   
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    const items = saved ? JSON.parse(saved) : [];
-    const feedbackItem = items.find((item: any) => item.id === feedbackId);
+    // Execute the code in the page context
+    // Wrap in a function to allow return statements
+    const executorFunc = new Function(code);
+    const result = executorFunc();
     
-    if (!feedbackItem) {
-      return createTextContent(`Error: Feedback item '${feedbackId}' not found. Use 'get_all_feedbacks' to see available items.`);
+    // Format the result
+    let formattedResult: string;
+    
+    if (result === undefined) {
+      formattedResult = '(undefined)';
+    } else if (result === null) {
+      formattedResult = '(null)';
+    } else if (typeof result === 'object') {
+      try {
+        // Try to serialize to JSON
+        formattedResult = JSON.stringify(result, null, 2);
+      } catch (e) {
+        // If serialization fails, use toString
+        formattedResult = `[Object: ${Object.prototype.toString.call(result)}]`;
+      }
+    } else {
+      formattedResult = String(result);
     }
     
-    const { sourceInfo } = feedbackItem;
-    if (!sourceInfo.elementInfo?.domPath) {
-      return createTextContent(`Error: No DOM path available for this element. Cannot retrieve fresh context.`);
-    }
+    return createTextContent(`${formattedResult}`);
     
-    // Try to locate the element using the DOM path
-    // This is a best-effort approach and may not always work
-    const domPath = sourceInfo.elementInfo.domPath;
-    let element: Element | null = null;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : '';
     
-    // Try direct selector if it has an ID
-    if (sourceInfo.elementInfo.id) {
-      element = document.getElementById(sourceInfo.elementInfo.id);
-    }
-    
-    // Fallback: try to find by class and tag combination
-    if (!element && sourceInfo.elementInfo.className) {
-      const selector = `${sourceInfo.elementInfo.tagName}.${sourceInfo.elementInfo.className.split(' ')[0]}`;
-      const candidates = document.querySelectorAll(selector);
-      // Use the first match (rough approximation)
-      element = candidates[0] || null;
-    }
-    
-    if (!element) {
-      return createTextContent(`# Unable to Locate Element
-
-The element from feedback '${feedbackId}' could not be found in the current DOM.
-
-**Possible reasons**:
-- Element was removed or unmounted
-- Page navigation occurred
-- Element is in a different state/route
-
-**Original DOM Path**: ${domPath}
-
-**Suggestion**: Inspect the element again using 'inspect_element' tool.`);
-    }
-    
-    // Element found! Extract fresh context
-    const computedStyles = window.getComputedStyle(element);
-    const rect = element.getBoundingClientRect();
-    
-    let contextData = '';
-    
-    if (contextType === 'styles' || contextType === 'all') {
-      contextData += `
-## Fresh Computed Styles
-
-### Layout
-\`\`\`css
-display: ${computedStyles.display}
-position: ${computedStyles.position}
-width: ${computedStyles.width}
-height: ${computedStyles.height}
-overflow: ${computedStyles.overflow}
-z-index: ${computedStyles.zIndex}
-\`\`\`
-
-### Typography
-\`\`\`css
-font-family: ${computedStyles.fontFamily}
-font-size: ${computedStyles.fontSize}
-font-weight: ${computedStyles.fontWeight}
-line-height: ${computedStyles.lineHeight}
-color: ${computedStyles.color}
-text-align: ${computedStyles.textAlign}
-\`\`\`
-
-### Spacing
-\`\`\`css
-padding: ${computedStyles.padding}
-margin: ${computedStyles.margin}
-\`\`\`
-
-### Background & Border
-\`\`\`css
-background-color: ${computedStyles.backgroundColor}
-background-image: ${computedStyles.backgroundImage}
-border: ${computedStyles.border}
-border-radius: ${computedStyles.borderRadius}
-\`\`\`
-
-### Effects
-\`\`\`css
-opacity: ${computedStyles.opacity}
-visibility: ${computedStyles.visibility}
-box-shadow: ${computedStyles.boxShadow}
-transform: ${computedStyles.transform}
-\`\`\`
-`;
-    }
-    
-    if (contextType === 'dom' || contextType === 'all') {
-      const currentAttrs = Array.from(element.attributes).reduce((acc, attr) => {
-        acc[attr.name] = attr.value;
-        return acc;
-      }, {} as Record<string, string>);
-      
-      contextData += `
-## Current DOM State
-
-**Tag**: ${element.tagName.toLowerCase()}
-**ID**: ${element.id || '(none)'}
-**Classes**: ${element.className || '(none)'}
-**Text Content**: ${element.textContent?.trim().slice(0, 100) || '(empty)'}
-
-**Current Position**:
-- X: ${Math.round(rect.x)}px, Y: ${Math.round(rect.y)}px
-- Width: ${Math.round(rect.width)}px, Height: ${Math.round(rect.height)}px
-
-**Attributes**:
-\`\`\`json
-${JSON.stringify(currentAttrs, null, 2)}
-\`\`\`
-`;
-    }
-    
-    if (contextType === 'events' || contextType === 'all') {
-      // Event listeners are not directly accessible via standard DOM APIs
-      // This is a limitation of browser security
-      contextData += `
-## Event Listeners
-
-*Note: Event listeners cannot be retrieved via standard DOM APIs for security reasons.*
-
-To inspect event listeners:
-1. Open DevTools → Elements tab
-2. Select the element
-3. View "Event Listeners" panel
-`;
-    }
-    
-    return createTextContent(`# Fresh Context for Feedback '${feedbackId}'
-
-**Original Component**: ${sourceInfo.component}
-**File**: ${sourceInfo.file}:${sourceInfo.line}
-**DOM Path**: ${domPath}
-${contextData}
-
----
-*Context retrieved at: ${new Date().toLocaleTimeString()}*`);
-    
-  } catch (e) {
-    return createTextContent(`Error: Failed to retrieve context. ${e instanceof Error ? e.message : 'Unknown error'}`);
+    return createTextContent(`## Error\n\`\`\`\n${errorMessage}\n\`\`\`\n\n${errorStack ? `## Stack Trace\n\`\`\`\n${errorStack}\n\`\`\`\n` : ''}\n## Suggestions\n- Check syntax errors\n- Verify element selectors exist\n- Ensure code returns a value\n- Check browser console for additional errors`);
   }
 }
 
@@ -439,19 +330,19 @@ export function useMcp() {
     // Register all tools
     client.registerTools([
       {
-        ...TOOL_SCHEMAS.get_all_feedbacks,
+        ...TOOL_SCHEMAS.list_inspections,
         implementation: getAllFeedbacks,
       },
       {
-        ...TOOL_SCHEMAS.inspect_element,
+        ...TOOL_SCHEMAS.capture_element_context,
         implementation: inspectElement,
       },
       {
-        ...TOOL_SCHEMAS.update_feedback_status,
+        ...TOOL_SCHEMAS.update_inspection_status,
         implementation: updateFeedbackStatus,
       },
       {
-        ...TOOL_SCHEMAS.patch_context,
+        ...TOOL_SCHEMAS.execute_page_script,
         implementation: patchContext,
       },
     ]);

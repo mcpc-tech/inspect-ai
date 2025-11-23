@@ -80,22 +80,22 @@ export async function createInspectorMcpServer() {
       { capabilities: { tools: {}, sampling: {}, prompts: {} } },
     ],
     [
-      // {
-      //   name: "inspector",
-      //   description: `Open chrome with devtools connected, to inspect the development environment with network and performance tools.`,
-      //   options: {
-      //     refs: ['<tool name="chrome.__ALL__"/>'],
-      //   },
-      //   deps: {
-      //     mcpServers: {
-      //       chrome: {
-      //         transportType: "stdio",
-      //         command: "node",
-      //         args: [getChromeDevToolsBinPath()],
-      //       },
-      //     },
-      //   },
-      // },
+      {
+        name: "chrome-devtools",
+        description: `Access Chrome DevTools for browser diagnostics. Provides tools for inspecting network requests, console logs, performance metrics, and debugging the development environment.`,
+        options: {
+          refs: ['<tool name="chrome.__ALL__"/>'],
+        },
+        deps: {
+          mcpServers: {
+            chrome: {
+              transportType: "stdio",
+              command: "node",
+              args: [getChromeDevToolsBinPath()],
+            },
+          },
+        },
+      },
     ]
   );
 
@@ -103,16 +103,16 @@ export async function createInspectorMcpServer() {
 
   mcpClientExecServer.registerClientToolSchemas([
     {
-      ...TOOL_SCHEMAS.inspect_element,
+      ...TOOL_SCHEMAS.capture_element_context,
     },
     {
-      ...TOOL_SCHEMAS.get_all_feedbacks,
+      ...TOOL_SCHEMAS.list_inspections,
     },
     {
-      ...TOOL_SCHEMAS.update_feedback_status,
+      ...TOOL_SCHEMAS.update_inspection_status,
     },
     {
-      ...TOOL_SCHEMAS.patch_context,
+      ...TOOL_SCHEMAS.execute_page_script,
     },
   ])
 
@@ -121,17 +121,17 @@ export async function createInspectorMcpServer() {
     return {
       prompts: [
         {
-          name: "grab-element",
-          title: "Inspect Element",
+          name: "capture-element",
+          title: "Capture Element Context",
           description:
-            "Inspect a UI element and get user feedback for modifications.",
+            "Capture context about a UI element for troubleshooting and investigation.",
           arguments: [],
         },
         {
-          name: "view-feedbacks",
-          title: "View All Feedbacks",
+          name: "view-inspections",
+          title: "View All Inspections",
           description:
-            "View all current feedback items in the queue with their status.",
+            "View all element inspections in the queue with their status.",
           arguments: [],
         },
       ],
@@ -139,9 +139,9 @@ export async function createInspectorMcpServer() {
   });
 
   mcpServer.setRequestHandler(GetPromptRequestSchema, async (request) => {
-    if (request.params.name === "grab-element") {
+    if (request.params.name === "capture-element") {
       const element = (await callMcpMethod(mcpServer, "tools/call", {
-        name: "inspect_element",
+        name: "capture_element_context",
         arguments: { },
       })) as CallToolResult;
 
@@ -152,15 +152,15 @@ export async function createInspectorMcpServer() {
             content: item,
           })) || [],
       } as GetPromptResult;
-    } else if (request.params.name === "view-feedbacks") {
-      const feedbacks = (await callMcpMethod(mcpServer, "tools/call", {
-        name: "get_all_feedbacks",
+    } else if (request.params.name === "view-inspections") {
+      const inspections = (await callMcpMethod(mcpServer, "tools/call", {
+        name: "list_inspections",
         arguments: {},
       })) as CallToolResult;
 
       return {
         messages:
-          feedbacks?.content.map((item) => ({
+          inspections?.content.map((item) => ({
             role: "user",
             content: item,
           })) || [],
