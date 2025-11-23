@@ -13,7 +13,7 @@ export const PROMPT_SCHEMAS = {
   },
 
   view_inspections: {
-    name: "view-inspections",
+    name: "view_inspections",
     title: "View All Inspections",
     description:
       "View all element inspections in the queue with their status.",

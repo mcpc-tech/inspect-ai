@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import type { InspectedElement } from "./types";
 import { Notification } from "./components/Notification";
 import { FeedbackBubble } from "./components/FeedbackBubble";
-import { type FeedbackItem } from "./components/FeedbackCart";
+import { type InspectionItem } from "./components/InspectionQueue";
 import { Overlay, Tooltip } from "./components/Overlays";
 import { useNotification } from "./hooks/useNotification";
 import { useInspectorHover } from "./hooks/useInspectorHover";
@@ -12,7 +12,7 @@ import { Toaster } from "./components/ui/sonner";
 import { cn } from "./lib/utils";
 import { useInspectorTheme } from "./context/ThemeContext";
 import { InspectorContainerContext } from "./context/InspectorContainerContext";
-import { loadFeedbackItems, saveFeedbackItems } from "./utils/feedbackStorage";
+import { useInspectionProgress } from "./hooks/useInspectionProgress";
 import inspectorStyles from "./styles.css";
 import ReactDOM from "react-dom/client";
 import { InspectorThemeProvider } from "./context/ThemeContext";
@@ -36,8 +36,7 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({
   const [isActive, setIsActive] = useState(false);
   const [sourceInfo, setSourceInfo] = useState<InspectedElement | null>(null);
   const [bubbleMode, setBubbleMode] = useState<"input" | null>(null);
-  const [feedbackItems, setFeedbackItems] =
-    useState<FeedbackItem[]>(loadFeedbackItems);
+  const { inspections, setInspections } = useInspectionProgress();
 
   // Agent State
   const { messages, sendMessage, status } = useChat({
@@ -63,14 +62,14 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({
   }, [resolvedTheme, shadowRoot]);
 
   useEffect(() => {
-    const activeFeedbackId = sessionStorage.getItem("inspector-current-feedback-id");
-    if (!activeFeedbackId) return;
+    const activeInspectionId = sessionStorage.getItem("inspector-current-inspection-id");
+    if (!activeInspectionId) return;
 
-    const feedbackExists = feedbackItems.some((item) => item.id === activeFeedbackId);
-    if (!feedbackExists) {
-      sessionStorage.removeItem("inspector-current-feedback-id");
+    const inspectionExists = inspections.some((item) => item.id === activeInspectionId);
+    if (!inspectionExists) {
+      sessionStorage.removeItem("inspector-current-inspection-id");
     }
-  }, []);
+  }, [inspections]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -97,9 +96,7 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({
     return () => window.removeEventListener("activate-inspector", handleActivateInspector);
   }, [isActive, showNotif]);
 
-  useEffect(() => {
-    saveFeedbackItems(feedbackItems);
-  }, [feedbackItems]);
+
 
   useInspectorHover({
     isActive,
@@ -141,12 +138,12 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({
     );
   };
 
-  const handleFeedbackSubmit = (feedback: string) => {
+  const handleInspectionSubmit = (description: string) => {
     if (!sourceInfo) return;
 
-    const feedbackId = `feedback-${Date.now()}`;
-    const newItem: FeedbackItem = {
-      id: feedbackId,
+    const inspectionId = `inspection-${Date.now()}`;
+    const newItem: InspectionItem = {
+      id: inspectionId,
       sourceInfo: {
         file: sourceInfo.file,
         component: sourceInfo.component,
@@ -154,29 +151,29 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({
         column: sourceInfo.column,
         elementInfo: sourceInfo.elementInfo,
       },
-      feedback,
+      description,
       status: "pending",
       timestamp: Date.now(),
     };
 
-    setFeedbackItems((prev) => [...prev, newItem]);
-    
+    setInspections((prev) => [...prev, newItem]);
+
     // Dispatch the element-inspected event to resolve the MCP tool promise
     window.dispatchEvent(
       new CustomEvent("element-inspected", {
         detail: {
           sourceInfo: newItem.sourceInfo,
-          feedback,
-          feedbackId,
+          description,
+          inspectionId,
         },
       })
     );
-    
+
     setBubbleMode(null);
     setIsActive(false);
     document.body.style.cursor = "";
 
-    showNotif("✅ Feedback saved");
+    showNotif("✅ Inspection saved");
   };
 
   const handleBubbleClose = () => {
@@ -201,8 +198,8 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({
     );
   };
 
-  const handleRemoveFeedback = (id: string) => {
-    setFeedbackItems((prev) => prev.filter((item) => item.id !== id));
+  const handleRemoveInspection = (id: string) => {
+    setInspections((prev) => prev.filter((item) => item.id !== id));
   };
 
   return (
@@ -221,9 +218,9 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({
             isAgentWorking={status === "streaming" || status === "submitted"}
             messages={messages}
             status={status}
-            feedbackCount={feedbackItems.length}
-            feedbackItems={feedbackItems}
-            onRemoveFeedback={handleRemoveFeedback}
+            inspectionCount={inspections.length}
+            inspectionItems={inspections}
+            onRemoveInspection={handleRemoveInspection}
           />
         </div>
 
@@ -237,7 +234,7 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({
             <FeedbackBubble
               sourceInfo={sourceInfo}
               mode={bubbleMode}
-              onSubmit={handleFeedbackSubmit}
+              onSubmit={handleInspectionSubmit}
               onClose={handleBubbleClose}
             />
           </div>

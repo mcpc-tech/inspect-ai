@@ -21,7 +21,7 @@ Click any UI element to let AI diagnose issues, inspect source code, analyze net
 ## Quick Start
 
 ```bash
-npm i @mcpc-tech/unplugin-dev-inspector-mcp
+npm i @mcpc-tech/unplugin-dev-inspector-mcp@beta
 ```
 
 ```typescript
