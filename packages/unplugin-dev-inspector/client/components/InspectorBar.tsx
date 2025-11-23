@@ -31,7 +31,6 @@ export const InspectorBar = ({
   feedbackItems = [],
   onRemoveFeedback = () => { }
 }: InspectorBarProps) => {
-  console.log(messages);
   const [isExpanded, setIsExpanded] = useState(false);
   const [input, setInput] = useState('');
   const [toolCall, setToolCall] = useState<string | null>(null);
@@ -39,13 +38,13 @@ export const InspectorBar = ({
   const [hideInputDuringWork, setHideInputDuringWork] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [allowHover, setAllowHover] = useState(true);
-  
+
   // accumulatedText tracks the full message history for reference
   const [accumulatedText, setAccumulatedText] = useState<string>('');
-  
+
   // Use the text buffer hook to handle smooth text updates
   const bufferedText = useTextBuffer(accumulatedText, isAgentWorking, 50);
-  
+
   // Only show the new fragment of text, not the whole history
   const [visibleFragment, setVisibleFragment] = useState('');
   const lastProcessedTextRef = useRef('');
@@ -58,19 +57,19 @@ export const InspectorBar = ({
 
     // 1. Handle Reset/Context Switch
     if (currentFullText.length < lastFullText.length || !currentFullText.startsWith(lastFullText)) {
-        setVisibleFragment(currentFullText);
-        lastProcessedTextRef.current = currentFullText;
-        return;
+      setVisibleFragment(currentFullText);
+      lastProcessedTextRef.current = currentFullText;
+      return;
     }
 
     // 2. Handle Incremental Update
     if (currentFullText.length > lastFullText.length) {
-        const newPart = currentFullText.slice(lastFullText.length).trim();
-        // Only update if there is meaningful content
-        if (newPart) {
-            setVisibleFragment(newPart);
-        }
-        lastProcessedTextRef.current = currentFullText;
+      const newPart = currentFullText.slice(lastFullText.length).trim();
+      // Only update if there is meaningful content
+      if (newPart) {
+        setVisibleFragment(newPart);
+      }
+      lastProcessedTextRef.current = currentFullText;
     }
   }, [bufferedText]);
 
@@ -91,27 +90,27 @@ export const InspectorBar = ({
       lastProcessedTextRef.current = '';
       return;
     }
-    
+
     // KISS: Only process the LAST message (the one that's being updated)
     const lastMessage = messages[messages.length - 1];
     if (lastMessage.role !== 'assistant') return;
-    
+
     // Extract tool and text from the last message
     const extractedTool = extractToolName(lastMessage);
     const { displayText: messageText, toolCall: activeToolCall } = processMessage(
       lastMessage,
       extractedTool || lastSeenToolNameRef.current
     );
-    
+
     // Update accumulated text
     const currentText = messageText || '';
     setAccumulatedText(currentText);
-    
+
     // Track tool name
     if (extractedTool) {
       lastSeenToolNameRef.current = extractedTool;
     }
-    
+
     // Update tool display
     if (activeToolCall) {
       // There's an active tool - show it
@@ -286,7 +285,7 @@ export const InspectorBar = ({
           )}
         </div>
 
-        <div 
+        <div
           className={cn(
             "flex items-center w-full gap-3 transition-all duration-500 delay-75",
             shouldShowInput

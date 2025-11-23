@@ -34,11 +34,11 @@ function createTextContent(text: string) {
 
 function formatElementInfo(elementInfo: any) {
   if (!elementInfo) return '';
-  
+
   const { tagName, textContent, className, id: elemId, styles } = elementInfo;
   const idAttr = elemId ? ` id="${elemId}"` : '';
   const classAttr = className ? ` class="${className}"` : '';
-  
+
   return `
 **DOM Element**:
 \`\`\`
@@ -58,17 +58,17 @@ function getAllFeedbacks() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     const items = saved ? JSON.parse(saved) : [];
-    
+
     if (items.length === 0) {
-      return createTextContent("# No Feedback Items\n\nThe queue is empty. Use 'inspect_element' to add tasks.");
+      return createTextContent("# No Feedback Items\n\nThe queue is empty. Use 'capture_element_context' to capture elements for investigation.");
     }
-    
+
     const feedbackList = items.map((item: any, index: number) => {
       const { id, sourceInfo, feedback, status, progress, result } = item;
       const statusText = (status === 'loading' && progress)
         ? `LOADING (${progress.completed}/${progress.total} steps)`
         : status.toUpperCase();
-      
+
       return `## ${index + 1}. Feedback ID: \`${id}\`
 
 **Status**: ${statusText}
@@ -81,9 +81,9 @@ ${feedback}
 
 ${result ? `**Result**: ${result}\n` : ''}---`;
     }).join('\n\n');
-    
-    const hint = `\n\n## How to Update\n\nUse \`update_feedback_status\` tool to update any feedback:\n\n\`\`\`\nupdate_feedback_status({\n  feedbackId: "feedback-xxx",  // Copy from above\n  status: "completed",\n  message: "Your summary here"\n})\n\`\`\``;
-    
+
+    const hint = `\n\n## How to Update\n\nUse \`update_inspection_status\` tool to update any inspection:\n\n\`\`\`\nupdate_inspection_status({\n  inspectionId: "feedback-xxx",  // Copy from above\n  status: "completed",\n  message: "Your findings here"\n})\n\`\`\``;
+
     return createTextContent(`# Feedback Queue (${items.length} items)\n\n${feedbackList}${hint}`);
   } catch (e) {
     return createTextContent("# Error\n\nFailed to load feedback items.");
@@ -93,25 +93,59 @@ ${result ? `**Result**: ${result}\n` : ''}---`;
 function formatResult(sourceInfo: any, feedback: string) {
   const { file, line, component, elementInfo } = sourceInfo;
   const fullPath = file.startsWith('examples/') ? file : `examples/demo/${file}`;
-  
+
   const domInfo = elementInfo ? `
 ## DOM Element
 \`\`\`
 Tag: <${elementInfo.tagName}${elementInfo.id ? ` id="${elementInfo.id}"` : ''}${elementInfo.className ? ` class="${elementInfo.className}"` : ''}>
 Text: ${elementInfo.textContent || '(empty)'}
+DOM Path: ${elementInfo.domPath || 'N/A'}
 \`\`\`
 
-### Key Styles
+### Position & Size
+${elementInfo.boundingBox ? `
+- **Position**: (${Math.round(elementInfo.boundingBox.x)}, ${Math.round(elementInfo.boundingBox.y)})
+- **Size**: ${Math.round(elementInfo.boundingBox.width)}px × ${Math.round(elementInfo.boundingBox.height)}px
+` : ''}
+
+### Computed Styles (Key Properties)
+${elementInfo.computedStyles ? `
+**Layout**:
+- display: ${elementInfo.computedStyles.layout.display}
+- position: ${elementInfo.computedStyles.layout.position}
+- z-index: ${elementInfo.computedStyles.layout.zIndex}
+
+**Typography**:
+- font: ${elementInfo.computedStyles.typography.fontSize} ${elementInfo.computedStyles.typography.fontFamily}
+- color: ${elementInfo.computedStyles.typography.color}
+- text-align: ${elementInfo.computedStyles.typography.textAlign}
+
+**Spacing**:
+- padding: ${elementInfo.computedStyles.spacing.padding}
+- margin: ${elementInfo.computedStyles.spacing.margin}
+
+**Background & Border**:
+- background: ${elementInfo.computedStyles.background.backgroundColor}
+- border: ${elementInfo.computedStyles.border.border}
+- border-radius: ${elementInfo.computedStyles.border.borderRadius}
+
+**Effects**:
+- opacity: ${elementInfo.computedStyles.effects.opacity}
+- box-shadow: ${elementInfo.computedStyles.effects.boxShadow || 'none'}
+- transform: ${elementInfo.computedStyles.effects.transform || 'none'}
+` : `
+**Legacy Styles**:
 \`\`\`css
-display: ${elementInfo.styles.display}
-color: ${elementInfo.styles.color}
-background: ${elementInfo.styles.backgroundColor}
-font-size: ${elementInfo.styles.fontSize}
-padding: ${elementInfo.styles.padding}
-margin: ${elementInfo.styles.margin}
+display: ${elementInfo.styles?.display}
+color: ${elementInfo.styles?.color}
+background: ${elementInfo.styles?.backgroundColor}
+font-size: ${elementInfo.styles?.fontSize}
+padding: ${elementInfo.styles?.padding}
+margin: ${elementInfo.styles?.margin}
 \`\`\`
+`}
 ` : '';
-  
+
   return createTextContent(`# Element Inspection Result
 
 ## Source Code
@@ -123,12 +157,73 @@ ${domInfo}
 ${feedback}
 
 ## Your Task
-1. Use 'read_file' to see the current code
-2. Make the necessary changes based on the user's request
-3. Call 'update_feedback_status' to update progress:
-   - Use status="in-progress" with progress details while working
-   - Use status="completed" with a message summary when done
-   - Use status="failed" with error message if something goes wrong`);
+1. Investigate or make changes based on the user's request
+2. Call 'update_inspection_status' to update progress:
+   - Use status="in-progress" with progress details while investigating
+   - Use status="completed" with findings/solution when done
+   - Use status="failed" with explanation if unable to resolve
+
+## Debugging Tips
+
+If you encounter issues:
+
+1. **Check Browser Console**: Look for errors related to this component
+   - Open DevTools → Console tab
+   - Filter by component name or file
+   
+2. **Inspect Network**: Check if required assets/APIs are loading
+   - Open DevTools → Network tab
+   - Look for failed requests (red status)
+   
+3. **Verify Element Exists**: Use the DOM path to confirm element is rendered
+   - DOM Path: ${elementInfo?.domPath || 'Use browser inspector'}
+   
+4. **Get Runtime Data**: Use execute_page_script tool to query current state
+   - Extract fresh computed styles
+   - Check element interactivity
+   - Access component instances (React/Vue)`);
+}
+
+function patchContext(args: any) {
+  const { code } = args;
+
+  if (!code || typeof code !== 'string') {
+    return createTextContent('Error: Missing or invalid "code" parameter. Please provide JavaScript code to execute.');
+  }
+
+  try {
+    // Execute the code in the page context
+    // Wrap in a function to allow return statements
+    const executorFunc = new Function(code);
+    const result = executorFunc();
+
+    // Format the result
+    let formattedResult: string;
+
+    if (result === undefined) {
+      formattedResult = '(undefined)';
+    } else if (result === null) {
+      formattedResult = '(null)';
+    } else if (typeof result === 'object') {
+      try {
+        // Try to serialize to JSON
+        formattedResult = JSON.stringify(result, null, 2);
+      } catch (e) {
+        // If serialization fails, use toString
+        formattedResult = `[Object: ${Object.prototype.toString.call(result)}]`;
+      }
+    } else {
+      formattedResult = String(result);
+    }
+
+    return createTextContent(`${formattedResult}`);
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : '';
+
+    return createTextContent(`## Error\n\`\`\`\n${errorMessage}\n\`\`\`\n\n${errorStack ? `## Stack Trace\n\`\`\`\n${errorStack}\n\`\`\`\n` : ''}\n## Suggestions\n- Check syntax errors\n- Verify element selectors exist\n- Ensure code returns a value\n- Check browser console for additional errors`);
+  }
 }
 
 function updateFeedbackStatus(args: any) {
@@ -140,7 +235,7 @@ function updateFeedbackStatus(args: any) {
       const saved = localStorage.getItem(STORAGE_KEY);
       const items = saved ? JSON.parse(saved) : [];
       const loadingItem = items.find((item: any) => item.status === 'loading');
-      
+
       if (loadingItem) {
         feedbackId = loadingItem.id;
         sessionStorage.setItem(FEEDBACK_ID_KEY, feedbackId);
@@ -212,7 +307,7 @@ export function useMcp() {
 
       const { sourceInfo, feedback, feedbackId } = event.detail;
       sessionStorage.setItem(FEEDBACK_ID_KEY, feedbackId);
-      
+
       pendingResolve(formatResult(sourceInfo, feedback));
       clearPendingRequest();
     }
@@ -235,21 +330,32 @@ export function useMcp() {
     // Register all tools
     client.registerTools([
       {
-        ...TOOL_SCHEMAS.get_all_feedbacks,
+        ...TOOL_SCHEMAS.list_inspections,
         implementation: getAllFeedbacks,
       },
       {
-        ...TOOL_SCHEMAS.inspect_element,
+        ...TOOL_SCHEMAS.capture_element_context,
         implementation: inspectElement,
       },
       {
-        ...TOOL_SCHEMAS.update_feedback_status,
+        ...TOOL_SCHEMAS.update_inspection_status,
         implementation: updateFeedbackStatus,
+      },
+      {
+        ...TOOL_SCHEMAS.execute_page_script,
+        implementation: patchContext,
       },
     ]);
 
     const transport = new SSEClientTransport(
-      new URL("/__mcp__/sse?sessionId=chrome", window.location.origin)
+      new URL("/__mcp__/sse?sessionId=chrome", window.location.origin),
+      {
+        requestInit: {
+          headers: {
+            'mcp-session-id': 'chrome'
+          }
+        }
+      }
     );
 
     client
