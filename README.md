@@ -14,13 +14,14 @@ tags:
 
 # @mcpc-tech/unplugin-dev-inspector-mcp
 
-**AI-powered visual debugging for React and Vue via MCP (Model Context Protocol).** Works with any MCP-compatible AI client. Click any UI element to let AI diagnose issues, inspect source code, analyze network requests, and provide intelligent fixes—all through natural conversation.
+**AI-powered visual debugging for React and Vue via MCP (Model Context Protocol).** Works with any MCP-compatible AI client. 
+
+Click any UI element to let AI diagnose issues, inspect source code, analyze network requests, and provide intelligent fixes—all through natural conversation.
 
 ## Quick Start
 
 ```bash
-pnpm install
-pnpm build
+npm i @mcpc-tech/unplugin-dev-inspector-mcp
 ```
 
 ```typescript
