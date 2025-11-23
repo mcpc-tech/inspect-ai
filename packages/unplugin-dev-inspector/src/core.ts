@@ -72,7 +72,7 @@ export const unplugin = createUnplugin<DevInspectorOptions | undefined>(
         },
 
         async configureServer(server) {
-          console.log("\n\u2728 Dev Inspector Plugin enabled!");
+          console.log("\n✨ Dev Inspector Plugin enabled!");
 
           if (enableMcp) {
             const host = server.config.server.host;
@@ -81,6 +81,11 @@ export const unplugin = createUnplugin<DevInspectorOptions | undefined>(
               host: typeof host === 'string' ? host : (host === true ? '0.0.0.0' : 'localhost'),
               port: server.config.server.port || 5173,
             };
+
+            // Display MCP connection instructions
+            const displayHost = serverContext.host === '0.0.0.0' ? 'localhost' : serverContext.host;
+            console.log(`📡 MCP: http://${displayHost}:${serverContext.port}/__mcp__/sse?puppetId=chrome\n`);
+
             await setupMcpMiddleware(server.middlewares, serverContext);
             setupAcpMiddleware(server.middlewares, serverContext);
           }
