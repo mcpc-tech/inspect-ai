@@ -4,7 +4,7 @@ import { Eye, Sparkles, ArrowRight, Terminal, CheckCircle2, XCircle, ChevronUp }
 import { Shimmer } from '../../src/components/ai-elements/shimmer';
 import type { UIMessage } from 'ai';
 import { processMessage, extractToolName } from '../utils/messageProcessor';
-import { FeedbackCart, type FeedbackItem } from './FeedbackCart';
+import { InspectionQueue, type InspectionItem } from './InspectionQueue';
 import { MessageDetail } from './MessageDetail';
 import { useTextBuffer } from '../hooks/useTextBuffer';
 
@@ -15,9 +15,9 @@ interface InspectorBarProps {
   isAgentWorking: boolean;
   messages: UIMessage[];
   status: 'streaming' | 'submitted' | 'ready' | 'error';
-  feedbackCount?: number;
-  feedbackItems?: FeedbackItem[];
-  onRemoveFeedback?: (id: string) => void;
+  inspectionCount?: number;
+  inspectionItems?: InspectionItem[];
+  onRemoveInspection?: (id: string) => void;
 }
 
 export const InspectorBar = ({
@@ -27,9 +27,9 @@ export const InspectorBar = ({
   isAgentWorking,
   messages,
   status,
-  feedbackCount = 0,
-  feedbackItems = [],
-  onRemoveFeedback = () => { }
+  inspectionCount = 0,
+  inspectionItems = [],
+  onRemoveInspection = () => { }
 }: InspectorBarProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [input, setInput] = useState('');
@@ -38,6 +38,14 @@ export const InspectorBar = ({
   const [hideInputDuringWork, setHideInputDuringWork] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [allowHover, setAllowHover] = useState(true);
+
+  // Inspection status display
+  const [inspectionStatus, setInspectionStatus] = useState<{
+    id: string;
+    status: 'in-progress' | 'completed' | 'failed';
+    message?: string;
+    currentStep?: { title: string; index: number; total: number };
+  } | null>(null);
 
   // accumulatedText tracks the full message history for reference
   const [accumulatedText, setAccumulatedText] = useState<string>('');
@@ -161,6 +169,54 @@ export const InspectorBar = ({
     }
   }, [isAgentWorking, isLocked]);
 
+  // Listen to inspection progress updates
+  useEffect(() => {
+    function handleInspectionProgress(event: Event) {
+      const customEvent = event as CustomEvent;
+      const { plan, inspectionId } = customEvent.detail;
+
+      // Find current step being processed
+      if (plan?.steps) {
+        const inProgressStep = plan.steps.find((s: any) => s.status === 'in-progress');
+        const completedCount = plan.steps.filter((s: any) => s.status === 'completed').length;
+
+        setInspectionStatus({
+          id: inspectionId,
+          status: 'in-progress',
+          currentStep: inProgressStep ? {
+            title: inProgressStep.title,
+            index: completedCount + 1,
+            total: plan.steps.length
+          } : undefined
+        });
+      }
+    }
+
+    function handleInspectionResult(event: Event) {
+      const customEvent = event as CustomEvent;
+      const { status, result, inspectionId } = customEvent.detail;
+
+      setInspectionStatus({
+        id: inspectionId,
+        status: status,
+        message: result?.message || result
+      });
+
+      // Clear after showing result for a moment
+      setTimeout(() => {
+        setInspectionStatus(null);
+      }, 3000);
+    }
+
+    window.addEventListener('plan-progress-reported', handleInspectionProgress as EventListener);
+    window.addEventListener('inspection-result-received', handleInspectionResult as EventListener);
+
+    return () => {
+      window.removeEventListener('plan-progress-reported', handleInspectionProgress as EventListener);
+      window.removeEventListener('inspection-result-received', handleInspectionResult as EventListener);
+    };
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
@@ -201,7 +257,7 @@ export const InspectorBar = ({
   const isError = status === 'error';
   const hasMessage = messages.length > 0;
   const shouldShowInput = isExpanded && !hideInputDuringWork;
-  const showMessage = (!isExpanded || hideInputDuringWork) && (isAgentWorking || hasMessage);
+  const showMessage = (!isExpanded || hideInputDuringWork) && (isAgentWorking || hasMessage || inspectionStatus);
 
   return (
     <div
@@ -254,6 +310,17 @@ export const InspectorBar = ({
                     <div className="absolute inset-0 rounded-full border-2 border-current opacity-20 animate-ping text-foreground" />
                     <Sparkles className="w-4 h-4 animate-pulse text-foreground" />
                   </>
+                ) : inspectionStatus ? (
+                  inspectionStatus.status === 'in-progress' ? (
+                    <>
+                      <div className="absolute inset-0 rounded-full border-2 border-current opacity-20 animate-ping text-blue-500" />
+                      <Terminal className="w-4 h-4 animate-pulse text-blue-500" />
+                    </>
+                  ) : inspectionStatus.status === 'completed' ? (
+                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-red-500" />
+                  )
                 ) : isError ? (
                   <XCircle className="w-5 h-5 text-red-500" />
                 ) : (
@@ -264,7 +331,18 @@ export const InspectorBar = ({
               <div className="w-px h-6 bg-border flex-shrink-0" />
 
               <div className="flex flex-col pr-2 max-h-[120px] overflow-y-auto">
-                {toolCall ? (
+                {inspectionStatus && inspectionStatus.status === 'in-progress' && inspectionStatus.currentStep ? (
+                  <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                    <Terminal className="w-4 h-4 flex-shrink-0" />
+                    <span className="line-clamp-3">
+                      Step {inspectionStatus.currentStep.index}/{inspectionStatus.currentStep.total}: {inspectionStatus.currentStep.title}
+                    </span>
+                  </div>
+                ) : inspectionStatus?.message ? (
+                  <div className="text-sm font-medium leading-[1.4] text-foreground line-clamp-3">
+                    {inspectionStatus.message}
+                  </div>
+                ) : toolCall ? (
                   <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                     <Terminal className="w-4 h-4 flex-shrink-0" />
                     <span className="line-clamp-3">{toolCall}</span>
@@ -305,9 +383,9 @@ export const InspectorBar = ({
             title="Toggle Inspector"
           >
             <Eye className="w-5 h-5" />
-            {feedbackCount > 0 && (
+            {inspectionCount > 0 && (
               <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full border-2 border-black dark:border-white">
-                {feedbackCount > 99 ? '99+' : feedbackCount}
+                {inspectionCount > 99 ? '99+' : inspectionCount}
               </span>
             )}
           </button>
@@ -327,7 +405,7 @@ export const InspectorBar = ({
             />
 
             {/* Expand button - only show when AI is working or has messages */}
-            {(feedbackCount > 0 || messages.length > 0) && (isAgentWorking || isLocked || messages.length > 0) && (
+            {(inspectionCount > 0 || messages.length > 0) && (isAgentWorking || isLocked || messages.length > 0) && (
               <button
                 type="button"
                 onClick={() => setIsPanelExpanded(!isPanelExpanded)}
@@ -372,12 +450,12 @@ export const InspectorBar = ({
       {isPanelExpanded && (
         <div className="absolute bottom-full left-0 right-0 pointer-events-auto max-w-[600px] mx-auto animate-panel-in">
           <div className="bg-muted/95 backdrop-blur-xl rounded-t-xl border border-border border-b-0 shadow-2xl overflow-hidden">
-            {/* Feedback Queue Section */}
-            {feedbackItems.length > 0 && (
+            {/* Inspection Queue Section */}
+            {inspectionItems.length > 0 && (
               <div className="border-b border-border">
-                <FeedbackCart
-                  items={feedbackItems}
-                  onRemove={onRemoveFeedback}
+                <InspectionQueue
+                  items={inspectionItems}
+                  onRemove={onRemoveInspection}
                 />
               </div>
             )}

@@ -4,8 +4,8 @@ import { useEffect, useRef } from "react";
 import { createClientExecClient } from "@mcpc-tech/cmcp";
 import { TOOL_SCHEMAS } from "../../src/tool-schemas.js";
 
-const STORAGE_KEY = 'inspector-feedback-items';
-const FEEDBACK_ID_KEY = 'inspector-current-feedback-id';
+const STORAGE_KEY = 'inspector-inspection-items';
+const INSPECTION_ID_KEY = 'inspector-current-inspection-id';
 const TIMEOUT_MS = 600_000;
 
 let pendingResolve: ((value: any) => void) | null = null;
@@ -60,11 +60,11 @@ function getAllFeedbacks() {
     const items = saved ? JSON.parse(saved) : [];
 
     if (items.length === 0) {
-      return createTextContent("# No Feedback Items\n\nThe queue is empty. Use 'capture_element_context' to capture elements for investigation.");
+      return createTextContent("# No Inspection Items\n\nThe queue is empty. Use 'capture_element_context' to capture elements for investigation.");
     }
 
     const feedbackList = items.map((item: any, index: number) => {
-      const { id, sourceInfo, feedback, status, progress, result } = item;
+      const { id, sourceInfo, description, status, progress, result } = item;
       const statusText = (status === 'loading' && progress)
         ? `LOADING (${progress.completed}/${progress.total} steps)`
         : status.toUpperCase();
@@ -77,20 +77,20 @@ function getAllFeedbacks() {
 **Component**: ${sourceInfo.component}
 ${formatElementInfo(sourceInfo.elementInfo)}
 **User Request**:
-${feedback}
+${description}
 
 ${result ? `**Result**: ${result}\n` : ''}---`;
     }).join('\n\n');
 
     const hint = `\n\n## How to Update\n\nUse \`update_inspection_status\` tool to update any inspection:\n\n\`\`\`\nupdate_inspection_status({\n  inspectionId: "feedback-xxx",  // Copy from above\n  status: "completed",\n  message: "Your findings here"\n})\n\`\`\``;
 
-    return createTextContent(`# Feedback Queue (${items.length} items)\n\n${feedbackList}${hint}`);
+    return createTextContent(`# Inspection Queue (${items.length} items)\n\n${feedbackList}${hint}`);
   } catch (e) {
-    return createTextContent("# Error\n\nFailed to load feedback items.");
+    return createTextContent("# Error\n\nFailed to load inspection items.");
   }
 }
 
-function formatResult(sourceInfo: any, feedback: string) {
+function formatResult(sourceInfo: any, description: string) {
   const { file, line, component, elementInfo } = sourceInfo;
   const fullPath = file.startsWith('examples/') ? file : `examples/demo/${file}`;
 
@@ -154,34 +154,15 @@ margin: ${elementInfo.styles?.margin}
 - **Component**: ${component}
 ${domInfo}
 ## User Request
-${feedback}
+${description}
 
 ## Your Task
-1. Investigate or make changes based on the user's request
-2. Call 'update_inspection_status' to update progress:
-   - Use status="in-progress" with progress details while investigating
-   - Use status="completed" with findings/solution when done
-   - Use status="failed" with explanation if unable to resolve
-
-## Debugging Tips
-
-If you encounter issues:
-
-1. **Check Browser Console**: Look for errors related to this component
-   - Open DevTools → Console tab
-   - Filter by component name or file
-   
-2. **Inspect Network**: Check if required assets/APIs are loading
-   - Open DevTools → Network tab
-   - Look for failed requests (red status)
-   
-3. **Verify Element Exists**: Use the DOM path to confirm element is rendered
-   - DOM Path: ${elementInfo?.domPath || 'Use browser inspector'}
-   
-4. **Get Runtime Data**: Use execute_page_script tool to query current state
-   - Extract fresh computed styles
-   - Check element interactivity
-   - Access component instances (React/Vue)`);
+1. Investigate the issue using 'chrome_devtools' tool (check console logs, network requests, performance)
+2. Use 'execute_page_script' to query element state if needed
+3. Update status with 'update_inspection_status':
+   - "in-progress" with progress details while investigating
+   - "completed" with findings when done
+   - "failed" if unresolvable`);
 }
 
 function patchContext(args: any) {
@@ -226,44 +207,52 @@ function patchContext(args: any) {
   }
 }
 
-function updateFeedbackStatus(args: any) {
-  const { feedbackId: providedId, status, progress, message } = args;
-  let feedbackId = providedId || sessionStorage.getItem(FEEDBACK_ID_KEY) || '';
+function updateInspectionStatus(args: any) {
+  const { inspectionId: providedId, status, progress, message } = args;
+  let inspectionId = providedId || sessionStorage.getItem(INSPECTION_ID_KEY) || '';
 
-  if (!feedbackId) {
+  if (!inspectionId) {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       const items = saved ? JSON.parse(saved) : [];
-      const loadingItem = items.find((item: any) => item.status === 'loading');
+      const loadingItem = items.find((item: any) => item.status === 'in-progress');
 
       if (loadingItem) {
-        feedbackId = loadingItem.id;
-        sessionStorage.setItem(FEEDBACK_ID_KEY, feedbackId);
+        inspectionId = loadingItem.id;
+        sessionStorage.setItem(INSPECTION_ID_KEY, inspectionId);
       } else {
-        return createTextContent("Error: No active feedback item found. Please use 'get_all_feedbacks' to see the queue, then provide the feedbackId parameter.");
+        return createTextContent("Error: No active inspection item found. Please use 'list_inspections' to see the queue, then provide the inspectionId parameter.");
       }
     } catch {
-      return createTextContent("Error: No active feedback item");
+      return createTextContent("Error: No active inspection item");
     }
   }
 
   if (progress) {
     window.dispatchEvent(new CustomEvent("plan-progress-reported", {
-      detail: { plan: { steps: progress.steps }, feedbackId, timestamp: new Date().toISOString() },
+      detail: { plan: { steps: progress.steps }, inspectionId, timestamp: new Date().toISOString() },
     }));
   }
 
   if (status === 'completed' || status === 'failed') {
-    sessionStorage.removeItem(FEEDBACK_ID_KEY);
+    sessionStorage.removeItem(INSPECTION_ID_KEY);
     const resultMessage = message || (status === 'completed' ? 'Task completed' : 'Task failed');
-    window.dispatchEvent(new CustomEvent("feedback-result-received", {
+    window.dispatchEvent(new CustomEvent("inspection-result-received", {
       detail: {
-        status: status === 'completed' ? "success" : "error",
+        status: status,
         result: { message: resultMessage },
-        feedbackId,
+        inspectionId,
       },
     }));
-    return createTextContent(`Feedback marked as ${status}.`);
+    return createTextContent(`Inspection marked as ${status}.`);
+  } else if (status === 'in-progress' && message && !progress) {
+    window.dispatchEvent(new CustomEvent("inspection-status-updated", {
+      detail: {
+        status: 'in-progress',
+        message: message,
+        inspectionId,
+      },
+    }));
   }
 
   return createTextContent("Status updated");
@@ -305,15 +294,15 @@ export function useMcp() {
     function handleElementInspected(event: CustomEvent) {
       if (!pendingResolve) return;
 
-      const { sourceInfo, feedback, feedbackId } = event.detail;
-      sessionStorage.setItem(FEEDBACK_ID_KEY, feedbackId);
+      const { sourceInfo, description, inspectionId } = event.detail;
+      sessionStorage.setItem(INSPECTION_ID_KEY, inspectionId);
 
-      pendingResolve(formatResult(sourceInfo, feedback));
+      pendingResolve(formatResult(sourceInfo, description));
       clearPendingRequest();
     }
 
     function handleInspectorCancelled() {
-      sessionStorage.removeItem(FEEDBACK_ID_KEY);
+      sessionStorage.removeItem(INSPECTION_ID_KEY);
       cancelPendingRequest("Inspector cancelled by user");
     }
 
@@ -339,7 +328,7 @@ export function useMcp() {
       },
       {
         ...TOOL_SCHEMAS.update_inspection_status,
-        implementation: updateFeedbackStatus,
+        implementation: updateInspectionStatus,
       },
       {
         ...TOOL_SCHEMAS.execute_page_script,

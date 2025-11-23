@@ -1,7 +1,7 @@
 import React from 'react';
 import { Loader2, CheckCircle2, XCircle, X } from 'lucide-react';
 
-export type FeedbackStatus = 'pending' | 'loading' | 'success' | 'error';
+export type InspectionStatus = 'pending' | 'in-progress' | 'completed' | 'failed';
 
 // Serializable version without Element references
 export interface SourceInfo {
@@ -18,41 +18,45 @@ export interface SourceInfo {
   };
 }
 
-export interface FeedbackItem {
+export interface InspectionItem {
   id: string;
   sourceInfo: SourceInfo;
-  feedback: string;
-  status: FeedbackStatus;
+  description: string;
+  status: InspectionStatus;
   progress?: {
-    completed: number;
-    total: number;
+    steps: Array<{
+      id: number;
+      title: string;
+      status: 'pending' | 'in-progress' | 'completed' | 'failed';
+    }>;
   };
   result?: string;
   timestamp: number;
 }
 
-interface FeedbackCartProps {
-  items: FeedbackItem[];
+interface InspectionQueueProps {
+  items: InspectionItem[];
   onRemove: (id: string) => void;
 }
 
-export const FeedbackCart: React.FC<FeedbackCartProps> = ({ items, onRemove }) => {
+export const InspectionQueue: React.FC<InspectionQueueProps> = ({ items, onRemove }) => {
   if (items.length === 0) return null;
 
-  const getStatusIcon = (status: FeedbackStatus) => {
-    if (status === 'loading') return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
-    if (status === 'success') return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-    if (status === 'error') return <XCircle className="h-4 w-4 text-red-500" />;
+  const getStatusIcon = (status: InspectionStatus) => {
+    if (status === 'in-progress') return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
+    if (status === 'completed') return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+    if (status === 'failed') return <XCircle className="h-4 w-4 text-red-500" />;
     return <div className="h-4 w-4 rounded-full border-2 border-gray-400" />;
   };
 
-  const getStatusText = (item: FeedbackItem) => {
-    if (item.status === 'loading' && item.progress) {
-      return `Processing... ${item.progress.completed}/${item.progress.total}`;
+  const getStatusText = (item: InspectionItem) => {
+    if (item.status === 'in-progress' && item.progress?.steps) {
+      const completed = item.progress.steps.filter(s => s.status === 'completed').length;
+      return `Processing... ${completed}/${item.progress.steps.length}`;
     }
-    if (item.status === 'success') return 'Completed';
-    if (item.status === 'error') return 'Failed';
-    if (item.status === 'loading') return 'Processing';
+    if (item.status === 'completed') return 'Completed';
+    if (item.status === 'failed') return 'Failed';
+    if (item.status === 'in-progress') return 'In Progress';
     return 'Pending';
   };
 
@@ -63,7 +67,7 @@ export const FeedbackCart: React.FC<FeedbackCartProps> = ({ items, onRemove }) =
     >
       <div className="bg-muted px-4 py-3 border-b border-border">
         <h3 className="font-semibold text-sm text-foreground">
-          Feedback Queue ({items.length})
+          Inspection Queue ({items.length})
         </h3>
       </div>
 
@@ -101,7 +105,7 @@ export const FeedbackCart: React.FC<FeedbackCartProps> = ({ items, onRemove }) =
                 </div>
 
                 <p className="text-xs text-foreground/80 mt-1 line-clamp-2">
-                  {item.feedback}
+                  {item.description}
                 </p>
 
                 <div className="flex items-center gap-2 mt-2">
@@ -109,19 +113,19 @@ export const FeedbackCart: React.FC<FeedbackCartProps> = ({ items, onRemove }) =
                     {getStatusText(item)}
                   </span>
 
-                  {item.status === 'loading' && item.progress && (
+                  {item.status === 'in-progress' && item.progress?.steps && (
                     <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                       <div
                         className="h-full bg-blue-500 transition-all duration-300"
                         style={{
-                          width: `${(item.progress.completed / item.progress.total) * 100}%`
+                          width: `${(item.progress.steps.filter(s => s.status === 'completed').length / item.progress.steps.length) * 100}%`
                         }}
                       />
                     </div>
                   )}
                 </div>
 
-                {item.status === 'error' && item.result && (
+                {item.status === 'failed' && item.result && (
                   <p className="text-xs text-destructive mt-1">
                     {item.result}
                   </p>
