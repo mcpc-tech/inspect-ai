@@ -66,10 +66,15 @@ function callMcpMethod(
   });
 }
 
+export interface ServerContext {
+  host?: string;
+  port?: number;
+}
+
 /**
  * Create and configure the MCP server for source inspection
  */
-export async function createInspectorMcpServer() {
+export async function createInspectorMcpServer(serverContext?: ServerContext) {
   const mcpServer = await mcpc(
     [
       {
@@ -93,7 +98,14 @@ export async function createInspectorMcpServer() {
     [
       {
         name: "chrome_devtools",
-        description: `Access Chrome DevTools for browser diagnostics. Provides tools for inspecting network requests, console logs, and performance metrics. Must first call chrome_navigate_page to launch Chrome before using these capabilities.`,
+        description: `Access Chrome DevTools for browser diagnostics.
+
+Provides tools for inspecting network requests, console logs, and performance metrics.
+
+IMPORTANT: Must first call chrome_navigate_page to launch Chrome before using these capabilities.
+Default dev server URL: http://${serverContext?.host || 'localhost'}:${serverContext?.port || 5173}
+
+You MUST ask the user for confirmation before navigating to any URL.`,
         options: {
           refs: ['<tool name="chrome.__ALL__"/>'],
         },
@@ -130,6 +142,8 @@ export async function createInspectorMcpServer() {
 
   // Prompts
   mcpServer.setRequestHandler(ListPromptsRequestSchema, async (request) => {
+    const defaultUrl = `http://${serverContext?.host || 'localhost'}:${serverContext?.port || 5173}`;
+
     return {
       prompts: [
         {
@@ -140,6 +154,14 @@ export async function createInspectorMcpServer() {
         },
         {
           ...PROMPT_SCHEMAS.launch_chrome_devtools,
+          description: `Launch Chrome DevTools and navigate to the dev server for debugging and inspection. Default URL: ${defaultUrl}. You can use this default URL or provide a custom one.`,
+          arguments: [
+            {
+              name: "url",
+              description: `The URL to navigate to. Press Enter to use default: ${defaultUrl}`,
+              required: false,
+            },
+          ],
         },
         {
           ...PROMPT_SCHEMAS.refresh_chrome_state,
@@ -183,21 +205,8 @@ export async function createInspectorMcpServer() {
       }
 
       case "launch_chrome_devtools": {
-        const url = request.params.arguments?.url as string | undefined;
-
-        if (!url) {
-          return {
-            messages: [
-              {
-                role: "user",
-                content: {
-                  type: "text",
-                  text: "Error: URL is required. Please provide a URL to navigate to (e.g., http://localhost:5173)",
-                },
-              },
-            ],
-          } as GetPromptResult;
-        }
+        const defaultUrl = `http://${serverContext?.host || 'localhost'}:${serverContext?.port || 5173}`;
+        const url = (request.params.arguments?.url as string | undefined) || defaultUrl;
 
         try {
           new URL(url);

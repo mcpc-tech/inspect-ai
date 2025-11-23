@@ -5,8 +5,9 @@ import { createACPProvider } from "@mcpc-tech/acp-ai-provider";
 import { planEntrySchema } from "@agentclientprotocol/sdk";
 import { z } from "zod";
 import { resolveMcpRemote } from "../utils/resolve-bin";
+import type { ServerContext } from "../mcp";
 
-export function setupAcpMiddleware(middlewares: Connect.Server) {
+export function setupAcpMiddleware(middlewares: Connect.Server, serverContext?: ServerContext) {
   middlewares.use(
     "/api/acp/chat",
     async (req: IncomingMessage, res: ServerResponse) => {
@@ -36,7 +37,7 @@ export function setupAcpMiddleware(middlewares: Connect.Server) {
                 command: mcpRemote.command,
                 args: [
                   ...mcpRemote.args,
-                  "http://localhost:5173/__mcp__/sse?puppetId=chrome",
+                  `http://${serverContext?.host || 'localhost'}:${serverContext?.port || 5173}/__mcp__/sse?puppetId=chrome`,
                 ],
                 env: [],
                 name: "inspect",

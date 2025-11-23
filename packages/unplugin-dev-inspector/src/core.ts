@@ -75,13 +75,19 @@ export const unplugin = createUnplugin<DevInspectorOptions | undefined>(
           console.log("\n\u2728 Dev Inspector Plugin enabled!");
 
           if (enableMcp) {
-            await setupMcpMiddleware(server.middlewares);
-            setupAcpMiddleware(server.middlewares);
+            const host = server.config.server.host;
+            const serverContext = {
+              // Normalize host: if true, use '0.0.0.0', otherwise use the string value or 'localhost'
+              host: typeof host === 'string' ? host : (host === true ? '0.0.0.0' : 'localhost'),
+              port: server.config.server.port || 5173,
+            };
+            await setupMcpMiddleware(server.middlewares, serverContext);
+            setupAcpMiddleware(server.middlewares, serverContext);
           }
           setupInspectorMiddleware(server.middlewares);
         },
 
-        handleHotUpdate() {},
+        handleHotUpdate() { },
       },
 
       // Webpack-specific hooks
