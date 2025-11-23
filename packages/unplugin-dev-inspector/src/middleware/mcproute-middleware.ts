@@ -214,7 +214,7 @@ async function handleSseConnection(
     }
 
     if (puppetId) {
-      if (!transports[puppetId]){
+      if (!transports[puppetId]) {
         // throw new Error(`Puppet ${puppetId} not found`);
       }
 
@@ -235,7 +235,7 @@ async function handleSseConnection(
         // @ts-expect-error - unbindPuppet is added by bindPuppet
         boundTransport.unbindPuppet();
       }
-      
+
       delete transports[sessionId];
       if (aliasSessionId) {
         delete transports[aliasSessionId];

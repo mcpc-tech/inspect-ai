@@ -34,11 +34,11 @@ function createTextContent(text: string) {
 
 function formatElementInfo(elementInfo: any) {
   if (!elementInfo) return '';
-  
+
   const { tagName, textContent, className, id: elemId, styles } = elementInfo;
   const idAttr = elemId ? ` id="${elemId}"` : '';
   const classAttr = className ? ` class="${className}"` : '';
-  
+
   return `
 **DOM Element**:
 \`\`\`
@@ -58,17 +58,17 @@ function getAllFeedbacks() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     const items = saved ? JSON.parse(saved) : [];
-    
+
     if (items.length === 0) {
       return createTextContent("# No Feedback Items\n\nThe queue is empty. Use 'capture_element_context' to capture elements for investigation.");
     }
-    
+
     const feedbackList = items.map((item: any, index: number) => {
       const { id, sourceInfo, feedback, status, progress, result } = item;
       const statusText = (status === 'loading' && progress)
         ? `LOADING (${progress.completed}/${progress.total} steps)`
         : status.toUpperCase();
-      
+
       return `## ${index + 1}. Feedback ID: \`${id}\`
 
 **Status**: ${statusText}
@@ -81,9 +81,9 @@ ${feedback}
 
 ${result ? `**Result**: ${result}\n` : ''}---`;
     }).join('\n\n');
-    
+
     const hint = `\n\n## How to Update\n\nUse \`update_inspection_status\` tool to update any inspection:\n\n\`\`\`\nupdate_inspection_status({\n  inspectionId: "feedback-xxx",  // Copy from above\n  status: "completed",\n  message: "Your findings here"\n})\n\`\`\``;
-    
+
     return createTextContent(`# Feedback Queue (${items.length} items)\n\n${feedbackList}${hint}`);
   } catch (e) {
     return createTextContent("# Error\n\nFailed to load feedback items.");
@@ -93,7 +93,7 @@ ${result ? `**Result**: ${result}\n` : ''}---`;
 function formatResult(sourceInfo: any, feedback: string) {
   const { file, line, component, elementInfo } = sourceInfo;
   const fullPath = file.startsWith('examples/') ? file : `examples/demo/${file}`;
-  
+
   const domInfo = elementInfo ? `
 ## DOM Element
 \`\`\`
@@ -145,7 +145,7 @@ margin: ${elementInfo.styles?.margin}
 \`\`\`
 `}
 ` : '';
-  
+
   return createTextContent(`# Element Inspection Result
 
 ## Source Code
@@ -186,20 +186,20 @@ If you encounter issues:
 
 function patchContext(args: any) {
   const { code } = args;
-  
+
   if (!code || typeof code !== 'string') {
     return createTextContent('Error: Missing or invalid "code" parameter. Please provide JavaScript code to execute.');
   }
-  
+
   try {
     // Execute the code in the page context
     // Wrap in a function to allow return statements
     const executorFunc = new Function(code);
     const result = executorFunc();
-    
+
     // Format the result
     let formattedResult: string;
-    
+
     if (result === undefined) {
       formattedResult = '(undefined)';
     } else if (result === null) {
@@ -215,13 +215,13 @@ function patchContext(args: any) {
     } else {
       formattedResult = String(result);
     }
-    
+
     return createTextContent(`${formattedResult}`);
-    
+
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : '';
-    
+
     return createTextContent(`## Error\n\`\`\`\n${errorMessage}\n\`\`\`\n\n${errorStack ? `## Stack Trace\n\`\`\`\n${errorStack}\n\`\`\`\n` : ''}\n## Suggestions\n- Check syntax errors\n- Verify element selectors exist\n- Ensure code returns a value\n- Check browser console for additional errors`);
   }
 }
@@ -235,7 +235,7 @@ function updateFeedbackStatus(args: any) {
       const saved = localStorage.getItem(STORAGE_KEY);
       const items = saved ? JSON.parse(saved) : [];
       const loadingItem = items.find((item: any) => item.status === 'loading');
-      
+
       if (loadingItem) {
         feedbackId = loadingItem.id;
         sessionStorage.setItem(FEEDBACK_ID_KEY, feedbackId);
@@ -307,7 +307,7 @@ export function useMcp() {
 
       const { sourceInfo, feedback, feedbackId } = event.detail;
       sessionStorage.setItem(FEEDBACK_ID_KEY, feedbackId);
-      
+
       pendingResolve(formatResult(sourceInfo, feedback));
       clearPendingRequest();
     }
@@ -348,7 +348,14 @@ export function useMcp() {
     ]);
 
     const transport = new SSEClientTransport(
-      new URL("/__mcp__/sse?sessionId=chrome", window.location.origin)
+      new URL("/__mcp__/sse?sessionId=chrome", window.location.origin),
+      {
+        requestInit: {
+          headers: {
+            'mcp-session-id': 'chrome'
+          }
+        }
+      }
     );
 
     client

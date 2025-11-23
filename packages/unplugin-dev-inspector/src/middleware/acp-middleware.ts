@@ -23,8 +23,6 @@ export function setupAcpMiddleware(middlewares: Connect.Server) {
         const cwd = process.cwd();
         const mcpRemote = resolveMcpRemote(cwd);
 
-        console.log("ACP Agent Command:", { agent, envVars, mcpRemote });
-
         const provider = createACPProvider({
           command: agent.command,
           args: agent.args,
