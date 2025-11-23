@@ -81,7 +81,7 @@ export const FeedbackBubble: React.FC<FeedbackBubbleProps> = ({
             {getTitle()}
           </DialogTitle>
           <DialogDescription className="text-xs">
-            {sourceInfo.component} • {sourceInfo.file}
+            {sourceInfo.component} • {sourceInfo.file}:{sourceInfo.line}:{sourceInfo.column}
           </DialogDescription>
         </DialogHeader>
 
