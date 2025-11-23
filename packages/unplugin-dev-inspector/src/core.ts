@@ -3,6 +3,7 @@ import { setupMcpMiddleware } from "./middleware/mcproute-middleware";
 import { setupInspectorMiddleware } from "./middleware/inspector-middleware";
 import { setupAcpMiddleware } from "./middleware/acp-middleware";
 import { transformJSX } from "./compiler/jsx-transform";
+import { compileVue } from "./compiler/vue-transform";
 
 export interface DevInspectorOptions {
   /**
@@ -35,15 +36,27 @@ export const unplugin = createUnplugin<DevInspectorOptions | undefined>(
       enforce: "pre",
 
       async transform(code, id) {
-        if (!id.match(/\.(jsx|tsx)$/)) return null;
         if (id.includes('node_modules')) return null;
 
-        try {
-          return await transformJSX({ code, id });
-        } catch (error) {
-          console.error(`[dev-inspector] Failed to transform ${id}:`, error);
-          return null;
+        if (id.match(/\.(jsx|tsx)$/)) {
+          try {
+            return await transformJSX({ code, id });
+          } catch (error) {
+            console.error(`[dev-inspector] Failed to transform ${id}:`, error);
+            return null;
+          }
         }
+
+        if (id.match(/\.vue$/)) {
+          try {
+            return await compileVue({ code, id });
+          } catch (error) {
+            console.error(`[dev-inspector] Failed to transform ${id}:`, error);
+            return null;
+          }
+        }
+
+        return null;
       },
 
       // Vite-specific hooks
