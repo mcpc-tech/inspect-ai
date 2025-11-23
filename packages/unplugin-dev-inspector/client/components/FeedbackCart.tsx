@@ -85,7 +85,7 @@ export const FeedbackCart: React.FC<FeedbackCartProps> = ({ items, onRemove }) =
                       {item.sourceInfo.component}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {item.sourceInfo.file}
+                      {item.sourceInfo.file}:{item.sourceInfo.line}{item.sourceInfo.column !== undefined ? `:${item.sourceInfo.column}` : ''}
                     </p>
                   </div>
 
