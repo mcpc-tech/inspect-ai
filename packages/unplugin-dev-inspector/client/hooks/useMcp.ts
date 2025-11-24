@@ -228,6 +228,26 @@ function updateInspectionStatus(args: any) {
     }
   }
 
+  // Handle deletion
+  if (status === 'deleted') {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      const items = saved ? JSON.parse(saved) : [];
+      const filteredItems = items.filter((item: any) => item.id !== inspectionId);
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredItems));
+      sessionStorage.removeItem(INSPECTION_ID_KEY);
+
+      window.dispatchEvent(new CustomEvent("inspection-deleted", {
+        detail: { inspectionId },
+      }));
+
+      return createTextContent(`Inspection ${inspectionId} deleted successfully.`);
+    } catch (error) {
+      return createTextContent("Error: Failed to delete inspection");
+    }
+  }
+
   if (progress) {
     window.dispatchEvent(new CustomEvent("plan-progress-reported", {
       detail: { plan: { steps: progress.steps }, inspectionId, timestamp: new Date().toISOString() },

@@ -300,7 +300,7 @@ export const InspectorBar = ({
         isError && !isExpanded && "bg-destructive/10 border-destructive/20"
       )}>
         <div className={cn(
-          "flex items-center gap-3 transition-opacity duration-300",
+          "flex items-center transition-opacity duration-300 w-full relative",
           shouldShowInput ? "absolute left-3 opacity-0 pointer-events-none" : "relative opacity-100"
         )}>
           {!showMessage && (
@@ -308,66 +308,71 @@ export const InspectorBar = ({
               <div className="flex items-center justify-center w-6 h-6 rounded-full bg-accent flex-shrink-0">
                 <Sparkles className="w-3.5 h-3.5 text-foreground" />
               </div>
-              <span className="text-xs text-muted-foreground/70">Hover to use</span>
+              <span className="text-xs text-muted-foreground/70 ml-3">Hover to inspect</span>
             </>
           )}
 
           {showMessage && (
             <>
-              <div className="relative flex items-center justify-center w-6 h-6 rounded-full bg-accent flex-shrink-0">
-                {isAgentWorking ? (
-                  <>
-                    <div className="absolute inset-0 rounded-full border-2 border-current opacity-20 animate-ping text-foreground" />
-                    <Sparkles className="w-3.5 h-3.5 animate-pulse text-foreground" />
-                  </>
-                ) : inspectionStatus ? (
-                  inspectionStatus.status === 'in-progress' ? (
+              {/* Fixed left icon group */}
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <div className="relative flex items-center justify-center w-6 h-6 rounded-full bg-accent flex-shrink-0">
+                  {isAgentWorking ? (
                     <>
-                      <div className="absolute inset-0 rounded-full border-2 border-current opacity-20 animate-ping text-blue-500" />
-                      <Terminal className="w-3.5 h-3.5 animate-pulse text-blue-500" />
+                      <div className="absolute inset-0 rounded-full border-2 border-current opacity-20 animate-ping text-foreground" />
+                      <Sparkles className="w-3.5 h-3.5 animate-pulse text-foreground" />
                     </>
-                  ) : inspectionStatus.status === 'completed' ? (
-                    <CheckCircle2 className="w-5 h-5 text-green-500" />
-                  ) : (
+                  ) : inspectionStatus ? (
+                    inspectionStatus.status === 'in-progress' ? (
+                      <>
+                        <div className="absolute inset-0 rounded-full border-2 border-current opacity-20 animate-ping text-blue-500" />
+                        <Terminal className="w-3.5 h-3.5 animate-pulse text-blue-500" />
+                      </>
+                    ) : inspectionStatus.status === 'completed' ? (
+                      <CheckCircle2 className="w-5 h-5 text-green-500" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-red-500" />
+                    )
+                  ) : isError ? (
                     <XCircle className="w-5 h-5 text-red-500" />
-                  )
-                ) : isError ? (
-                  <XCircle className="w-5 h-5 text-red-500" />
-                ) : (
-                  <CheckCircle2 className="w-5 h-5 text-green-500" />
-                )}
+                  ) : (
+                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+                  )}
+                </div>
+                <div className="w-px h-4 bg-border flex-shrink-0" />
               </div>
 
-              <div className="w-px h-4 bg-border flex-shrink-0" />
-
-              <div className="flex flex-col pr-2 max-h-[120px] overflow-y-auto">
-                {inspectionStatus && inspectionStatus.status === 'in-progress' && inspectionStatus.currentStep ? (
-                  <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                    <Terminal className="w-4 h-4 flex-shrink-0" />
-                    <span className="line-clamp-3">
-                      Step {inspectionStatus.currentStep.index}/{inspectionStatus.currentStep.total}: {inspectionStatus.currentStep.title}
-                    </span>
-                  </div>
-                ) : inspectionStatus?.message ? (
-                  <div className="text-sm font-medium leading-[1.4] text-foreground line-clamp-3">
-                    {inspectionStatus.message}
-                  </div>
-                ) : toolCall ? (
-                  <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                    <Terminal className="w-4 h-4 flex-shrink-0" />
-                    <span className="line-clamp-3">{toolCall}</span>
-                  </div>
-                ) : (
-                  <div className="text-sm font-medium leading-[1.4] text-foreground line-clamp-3">
-                    {isAgentWorking && !visibleFragment ? (
-                      <Shimmer duration={2} spread={2}>
-                        Thinking...
-                      </Shimmer>
-                    ) : (
-                      visibleFragment || 'Processing...'
-                    )}
-                  </div>
-                )}
+              {/* Centered text content */}
+              <div className="flex-1 flex justify-center min-w-0">
+                <div className="flex flex-col min-w-0 max-w-full pr-2 max-h-[24px] overflow-hidden">
+                  {inspectionStatus && inspectionStatus.status === 'in-progress' && inspectionStatus.currentStep ? (
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-foreground min-w-0">
+                      <Terminal className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate min-w-0">
+                        Step {inspectionStatus.currentStep.index}/{inspectionStatus.currentStep.total}: {inspectionStatus.currentStep.title}
+                      </span>
+                    </div>
+                  ) : inspectionStatus?.message ? (
+                    <div className="text-sm font-medium leading-[1.4] text-foreground truncate min-w-0">
+                      {inspectionStatus.message}
+                    </div>
+                  ) : toolCall ? (
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-foreground min-w-0">
+                      <Terminal className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate min-w-0">{toolCall}</span>
+                    </div>
+                  ) : (
+                    <div className="text-sm font-medium leading-[1.4] text-foreground truncate min-w-0">
+                      {isAgentWorking && !visibleFragment ? (
+                        <Shimmer duration={2} spread={2}>
+                          Thinking...
+                        </Shimmer>
+                      ) : (
+                        visibleFragment || 'Processing...'
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           )}
@@ -537,7 +542,7 @@ export const InspectorBar = ({
             {/* Message Detail Section - Show InspectorBar messages */}
             {activePanel === 'chat' && (
               <div className="h-[500px]">
-                <MessageDetail messages={messages} status={status} />
+                <MessageDetail messages={messages} status={status} selectedAgent={selectedAgent} />
               </div>
             )}
           </div>

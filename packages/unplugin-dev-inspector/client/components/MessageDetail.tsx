@@ -13,14 +13,16 @@ import { AVAILABLE_AGENTS, DEFAULT_AGENT } from "../constants/agents";
 interface MessageDetailProps {
   messages: UIMessage[];
   status: "streaming" | "submitted" | "ready" | "error";
+  selectedAgent?: string;
 }
 
 export const MessageDetail: React.FC<MessageDetailProps> = ({
   messages,
   status,
+  selectedAgent,
 }) => {
   const currentAgent =
-    AVAILABLE_AGENTS.find((a) => a.name === DEFAULT_AGENT) ||
+    AVAILABLE_AGENTS.find((a) => a.name === (selectedAgent || DEFAULT_AGENT)) ||
     AVAILABLE_AGENTS[0];
 
   return (

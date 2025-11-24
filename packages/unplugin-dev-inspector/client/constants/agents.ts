@@ -44,6 +44,42 @@ export const AVAILABLE_AGENTS: Agent[] = [
       icon: "https://unpkg.com/@lobehub/icons-static-svg@1.73.0/icons/gemini-color.svg",
     },
   },
+  {
+    name: "Kimi CLI",
+    command: "kimi",
+    args: ["--acp"],
+    env: [],
+    meta: {
+      icon: "https://unpkg.com/@lobehub/icons-static-svg@1.73.0/icons/moonshot.svg",
+    },
+  },
+  {
+    name: "Goose",
+    command: "goose",
+    args: ["acp"],
+    env: [],
+    meta: {
+      icon: "https://unpkg.com/@lobehub/icons-static-svg@1.73.0/icons/goose.svg",
+    },
+  },
+  {
+    name: "Opencode",
+    command: "npx",
+    args: ["-y", "opencode-ai", "acp"],
+    env: [],
+    meta: {
+      icon: "https://avatars.githubusercontent.com/u/66570915?s=48&v=4",
+    },
+  },
+  {
+    name: "Cursor Agent",
+    command: "npx",
+    args: ["cursor-agent-acp"],
+    env: [],
+    meta: {
+      icon: "https://unpkg.com/@lobehub/icons-static-svg@1.73.0/icons/cursor.svg",
+    },
+  },
 ];
 
 export const DEFAULT_AGENT = "Claude Code";

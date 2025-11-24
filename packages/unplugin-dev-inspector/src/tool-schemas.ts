@@ -27,7 +27,7 @@ export const TOOL_SCHEMAS = {
   update_inspection_status: {
     name: "update_inspection_status",
     description:
-      "Update inspection status with optional progress tracking.\n\n**Parameters**:\n- inspectionId: Optional (auto-detects if omitted)\n- status: 'in-progress' | 'completed' | 'failed'\n- progress: Optional steps array [{id, title, status}]\n- message: REQUIRED for 'completed'/'failed' status\n\n**Example**:\n```javascript\nupdate_inspection_status({\n  status: 'completed',\n  message: 'Fixed: pointer-events: none blocking clicks'\n});\n```",
+      "Update inspection status with optional progress tracking.\n\n**Parameters**:\n- inspectionId: Optional (auto-detects if omitted)\n- status: 'in-progress' | 'completed' | 'failed' | 'deleted'\n- progress: Optional steps array [{id, title, status}]\n- message: REQUIRED for 'completed'/'failed' status\n\n**Example**:\n```javascript\nupdate_inspection_status({\n  status: 'completed',\n  message: 'Fixed: pointer-events: none blocking clicks'\n});\n// Or delete an inspection\nupdate_inspection_status({\n  status: 'deleted'\n});\n```",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -38,9 +38,9 @@ export const TOOL_SCHEMAS = {
         },
         status: {
           type: "string",
-          enum: ["in-progress", "completed", "failed"],
+          enum: ["in-progress", "completed", "failed", "deleted"],
           description:
-            "Current status: 'in-progress' for updates, 'completed' when resolved, 'failed' if unresolvable",
+            "Current status: 'in-progress' for updates, 'completed' when resolved, 'failed' if unresolvable, 'deleted' to remove inspection",
         },
         progress: {
           type: "object",
