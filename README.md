@@ -14,7 +14,7 @@ tags:
 
 # @mcpc-tech/unplugin-dev-inspector-mcp
 
-**AI-powered visual debugging for React and Vue via MCP (Model Context Protocol).** Works with any MCP-compatible AI client. 
+**AI-powered visual debugging for React and Vue via MCP (Model Context Protocol) and ACP (Agent Client Protocol).** Works with any MCP-compatible AI client and popular ACP agents like **Claude Code**, **Goose**, **Gemini CLI**, and **OpenCode**. 
 
 Click any UI element to let AI diagnose issues, inspect source code, analyze network requests, and provide intelligent fixes—all through natural conversation.
 
