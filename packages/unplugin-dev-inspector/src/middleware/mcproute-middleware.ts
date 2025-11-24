@@ -3,21 +3,15 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import type { IncomingMessage, ServerResponse } from "http";
 import { randomUUID } from "crypto";
 import type { Connect } from "vite";
-import { bindPuppet } from "@mcpc-tech/cmcp";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { createInspectorMcpServer, type ServerContext } from "../mcp";
+import { ConnectionManager } from "./connection-manager.js";
 
 /**
  * Setup MCP server endpoints in Vite dev server
  */
 export async function setupMcpMiddleware(middlewares: Connect.Server, serverContext?: ServerContext) {
-  const state = {
-    transports: {} as Record<
-      string,
-      StreamableHTTPServerTransport | SSEServerTransport
-    >,
-    latestInspectorSessionId: null as string | null,
-  };
+  const connectionManager = new ConnectionManager();
 
   middlewares.use(
     async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
@@ -31,11 +25,11 @@ export async function setupMcpMiddleware(middlewares: Connect.Server, serverCont
         !url.startsWith("/__mcp__/messages")
       ) {
         if (req.method === "POST") {
-          await handleStreamableHttpPost(req, res, mcpServer, state.transports);
+          await handleStreamableHttpPost(req, res, mcpServer, connectionManager);
         } else if (req.method === "GET") {
-          await handleStreamableHttpGet(req, res, state.transports);
+          await handleStreamableHttpGet(req, res, connectionManager);
         } else if (req.method === "DELETE") {
-          await handleStreamableHttpDelete(req, res, state.transports);
+          await handleStreamableHttpDelete(req, res, connectionManager);
         } else {
           res.writeHead(405).end("Method Not Allowed");
         }
@@ -44,13 +38,13 @@ export async function setupMcpMiddleware(middlewares: Connect.Server, serverCont
 
       // SSE endpoint (deprecated)
       if (url.startsWith("/__mcp__/sse") && req.method === "GET") {
-        await handleSseConnection(req, res, mcpServer, state);
+        await handleSseConnection(req, res, mcpServer, connectionManager);
         return;
       }
 
       // SSE messages endpoint (deprecated)
       if (url.startsWith("/__mcp__/messages") && req.method === "POST") {
-        await handleSseMessage(req, res, state.transports);
+        await handleSseMessage(req, res, connectionManager);
         return;
       }
 
@@ -66,7 +60,7 @@ async function handleStreamableHttpPost(
   req: IncomingMessage,
   res: ServerResponse,
   mcpServer: Server,
-  transports: Record<string, StreamableHTTPServerTransport | SSEServerTransport>
+  connectionManager: ConnectionManager
 ) {
   try {
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
@@ -76,8 +70,9 @@ async function handleStreamableHttpPost(
     const body = await readRequestBody(req);
     const parsedBody = JSON.parse(body);
 
-    if (sessionId && transports[sessionId]) {
-      const existingTransport = transports[sessionId];
+    const existingTransport = sessionId ? connectionManager.getTransport(sessionId) : undefined;
+
+    if (sessionId && existingTransport) {
       if (existingTransport instanceof StreamableHTTPServerTransport) {
         transport = existingTransport;
       } else {
@@ -98,14 +93,14 @@ async function handleStreamableHttpPost(
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         onsessioninitialized: (sid) => {
-          transports[sid] = transport;
+          connectionManager.registerTransport(sid, transport);
         },
         enableJsonResponse: false,
       });
 
       transport.onclose = () => {
         if (transport.sessionId) {
-          delete transports[transport.sessionId];
+          connectionManager.removeTransport(transport.sessionId);
         }
       };
 
@@ -148,16 +143,20 @@ async function handleStreamableHttpPost(
 async function handleStreamableHttpGet(
   req: IncomingMessage,
   res: ServerResponse,
-  transports: Record<string, StreamableHTTPServerTransport | SSEServerTransport>
+  connectionManager: ConnectionManager
 ) {
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
 
-  if (!sessionId || !transports[sessionId]) {
+  if (!sessionId) {
     res.writeHead(400).end("Invalid or missing session ID");
     return;
   }
 
-  const transport = transports[sessionId];
+  const transport = connectionManager.getTransport(sessionId);
+  if (!transport) {
+    res.writeHead(400).end("Invalid or missing session ID");
+    return;
+  }
   if (!(transport instanceof StreamableHTTPServerTransport)) {
     res.writeHead(400).end("Session uses different transport");
     return;
@@ -172,16 +171,20 @@ async function handleStreamableHttpGet(
 async function handleStreamableHttpDelete(
   req: IncomingMessage,
   res: ServerResponse,
-  transports: Record<string, StreamableHTTPServerTransport | SSEServerTransport>
+  connectionManager: ConnectionManager
 ) {
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
 
-  if (!sessionId || !transports[sessionId]) {
+  if (!sessionId) {
     res.writeHead(404).end("Session not found");
     return;
   }
 
-  const transport = transports[sessionId];
+  const transport = connectionManager.getTransport(sessionId);
+  if (!transport) {
+    res.writeHead(404).end("Session not found");
+    return;
+  }
   if (!(transport instanceof StreamableHTTPServerTransport)) {
     res.writeHead(400).end("Session uses different transport");
     return;
@@ -197,15 +200,8 @@ async function handleSseConnection(
   req: IncomingMessage,
   res: ServerResponse,
   mcpServer: Server,
-  state: {
-    transports: Record<
-      string,
-      StreamableHTTPServerTransport | SSEServerTransport
-    >;
-    latestInspectorSessionId: string | null;
-  }
+  connectionManager: ConnectionManager
 ) {
-  const { transports } = state;
   try {
     const url = new URL(req.url ?? "", `http://${req.headers.host}`);
     const transport = new SSEServerTransport("/__mcp__/messages", res);
@@ -214,60 +210,20 @@ async function handleSseConnection(
     const puppetId = url.searchParams.get("puppetId");
     const clientType = url.searchParams.get("clientType");
 
-    if (clientType === "inspector") {
-      state.latestInspectorSessionId = sessionId;
+    connectionManager.registerTransport(sessionId, transport);
+    if (aliasSessionId) {
+      connectionManager.registerTransport(aliasSessionId, transport);
     }
 
-    const runningHostTransport = Object.values(transports).find(
-      // @ts-expect-error - puppet transport marker
-      (t) => t.__puppetId === aliasSessionId
-    );
-
-    let boundTransport = transport as unknown;
-    if (runningHostTransport) {
-      boundTransport = bindPuppet(runningHostTransport, transport);
+    if (clientType === "inspector") {
+      connectionManager.handleInspectorConnection(sessionId);
     }
 
     if (puppetId) {
-      let targetTransport = transports[puppetId];
-
-      if (
-        !targetTransport &&
-        puppetId === "chrome" &&
-        state.latestInspectorSessionId
-      ) {
-        targetTransport = transports[state.latestInspectorSessionId];
-      }
-
-      if (!targetTransport) {
-        // throw new Error(`Puppet ${puppetId} not found`);
-      }
-
-      if (targetTransport) {
-        boundTransport = bindPuppet(transport, targetTransport);
-      }
+      const result = connectionManager.handleWatcherConnection(sessionId, puppetId, transport);
       // @ts-expect-error - puppet transport marker
       transport.__puppetId = puppetId;
     }
-
-    transports[sessionId] = transport;
-    if (aliasSessionId) {
-      transports[aliasSessionId] = transport;
-    }
-
-    transport.onclose = () => {
-      // Unbind puppet to prevent sending to closed transport
-      // @ts-expect-error - unbindPuppet is added by bindPuppet
-      if (typeof boundTransport?.unbindPuppet === 'function') {
-        // @ts-expect-error - unbindPuppet is added by bindPuppet
-        boundTransport.unbindPuppet();
-      }
-
-      delete transports[sessionId];
-      if (aliasSessionId) {
-        delete transports[aliasSessionId];
-      }
-    };
 
     await mcpServer.connect(transport);
   } catch (error) {
@@ -284,7 +240,7 @@ async function handleSseConnection(
 async function handleSseMessage(
   req: IncomingMessage,
   res: ServerResponse,
-  transports: Record<string, StreamableHTTPServerTransport | SSEServerTransport>
+  connectionManager: ConnectionManager
 ) {
   try {
     const url = new URL(req.url || "", `http://${req.headers.host}`);
@@ -295,7 +251,7 @@ async function handleSseMessage(
       return;
     }
 
-    const transport = transports[sessionId];
+    const transport = connectionManager.getTransport(sessionId);
     if (!transport || !(transport instanceof SSEServerTransport)) {
       res.writeHead(404).end("Session not found or wrong transport type");
       return;
