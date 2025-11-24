@@ -20,7 +20,7 @@ Click any UI element to let AI diagnose issues, inspect source code, analyze net
 
 ![Demo: MCP-powered visual debugging in action](./dev-inspector-mcp-demo.gif)
 
-![Demo: Image preview](./dev-inspector-mcp-preview.png)
+![Demo: Image preview](https://raw.githubusercontent.com/mcpc-tech/dev-inspector-mcp/refs/heads/main/dev-inspector-mcp-preview.png)
 
 ## Quick Start
 
