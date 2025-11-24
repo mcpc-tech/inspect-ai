@@ -18,6 +18,8 @@ tags:
 
 Click any UI element to let AI diagnose issues, inspect source code, analyze network requests, and provide intelligent fixes—all through natural conversation.
 
+![Demo: MCP-powered visual debugging in action](dev-inspector-mcp-demo.gif)
+
 ## Quick Start
 
 ```bash
