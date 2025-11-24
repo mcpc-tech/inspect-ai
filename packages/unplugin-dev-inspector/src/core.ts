@@ -4,6 +4,7 @@ import { setupInspectorMiddleware } from "./middleware/inspector-middleware";
 import { setupAcpMiddleware } from "./middleware/acp-middleware";
 import { transformJSX } from "./compiler/jsx-transform";
 import { compileVue } from "./compiler/vue-transform";
+import type { Agent } from "../client/constants/agents";
 
 export interface DevInspectorOptions {
   /**
@@ -17,6 +18,18 @@ export interface DevInspectorOptions {
    * @default true
    */
   enableMcp?: boolean;
+
+  /**
+   * Custom agents configuration
+   * If provided, these will be merged with or replace the default agents
+   */
+  agents?: Agent[];
+
+  /**
+   * Default agent name to use
+   * @default "Claude Code"
+   */
+  defaultAgent?: string;
 }
 
 export const unplugin = createUnplugin<DevInspectorOptions | undefined>(
@@ -89,7 +102,10 @@ export const unplugin = createUnplugin<DevInspectorOptions | undefined>(
             await setupMcpMiddleware(server.middlewares, serverContext);
             setupAcpMiddleware(server.middlewares, serverContext);
           }
-          setupInspectorMiddleware(server.middlewares);
+          setupInspectorMiddleware(server.middlewares, {
+            agents: options.agents,
+            defaultAgent: options.defaultAgent,
+          });
         },
 
         handleHotUpdate() { },

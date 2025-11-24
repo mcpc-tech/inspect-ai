@@ -42,6 +42,54 @@ export default {
 
 Currently supports **Vite**. Webpack, Rollup, esbuild, and Rspack support coming soon.
 
+## Configuration
+
+### Custom Agents
+
+This plugin uses the [Agent Client Protocol (ACP)](https://agentclientprotocol.com) to connect with AI agents. 
+
+⏱️ **Note:** Initial connection may be slow as agents are launched via `npx` (downloads packages on first run).
+
+Default agents: [View configuration →](https://github.com/mcpc-tech/dev-inspector-mcp/blob/main/packages/unplugin-dev-inspector/client/constants/agents.ts)
+
+
+You can customize available AI agents and set a default agent:
+
+```typescript
+// vite.config.ts
+export default {
+  plugins: [
+    DevInspector.vite({
+      enabled: true,
+      enableMcp: true,
+      // Custom agents (will be merged with default properties)
+      agents: [
+        {
+          name: "Claude Code", // Matches default - auto-fills icon and env
+          command: "npx",
+          args: ["-y", "@zed-industries/claude-code-acp"],
+        },
+        {
+          name: "My Custom Agent",
+          command: "my-agent-cli",
+          args: ["--mode", "acp"],
+          env: [{ key: "MY_API_KEY", required: true }],
+          meta: { icon: "https://example.com/icon.svg" }
+        }
+      ],
+      // Set default agent to show on startup
+      defaultAgent: "Claude Code"
+    }),
+  ],
+};
+```
+
+**Key Features:**
+- Custom agents with the **same name** as [default agents](https://agentclientprotocol.com/overview/agents) automatically inherit missing properties (icons, env)
+- You can override just the command/args while keeping default icons
+- If no custom agents provided, defaults are: Claude Code, Codex CLI, Gemini CLI, Kimi CLI, Goose, OpenCode
+
+
 ## What It Does
 
 **Click element → AI analyzes → Get fix**

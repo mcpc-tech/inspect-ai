@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import type { Agent } from '../../client/constants/agents'
 
 // ESM equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -52,12 +53,17 @@ function getInspectorCSS(): string | null {
       continue;
     }
   }
-  
+
   console.warn('⚠️  Inspector CSS not found. Run `pnpm build:client` first.');
   return null;
 }
 
-export function setupInspectorMiddleware(middlewares: Connect.Server) {
+export interface InspectorConfig {
+  agents?: Agent[];
+  defaultAgent?: string;
+}
+
+export function setupInspectorMiddleware(middlewares: Connect.Server, config?: InspectorConfig) {
   let cachedScript: string | null = null;
   let cachedCSS: string | null = null;
   let filesChecked = false;
@@ -81,7 +87,7 @@ export function setupInspectorMiddleware(middlewares: Connect.Server) {
       res.end('Inspector script not found');
       return;
     }
-    
+
     if (req.url === '/__inspector__/inspector.css') {
       if (cachedCSS) {
         res.statusCode = 200;
@@ -94,7 +100,15 @@ export function setupInspectorMiddleware(middlewares: Connect.Server) {
       res.end('Inspector CSS not found');
       return;
     }
-    
+
+    if (req.url === '/__inspector__/config.json') {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.end(JSON.stringify(config || {}));
+      return;
+    }
+
     next();
   });
 }
