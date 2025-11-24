@@ -18,8 +18,6 @@ tags:
 
 Click any UI element to let AI diagnose issues, inspect source code, analyze network requests, and provide intelligent fixes—all through natural conversation.
 
-![Demo: MCP-powered visual debugging in action](./dev-inspector-mcp-demo.gif)
-
 ![Demo: Image preview](https://raw.githubusercontent.com/mcpc-tech/dev-inspector-mcp/refs/heads/main/dev-inspector-mcp-preview.png)
 
 ## Quick Start
