@@ -19,7 +19,7 @@ import { InspectorThemeProvider } from "./context/ThemeContext";
 import { InspectorBar } from "./components/InspectorBar";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { AVAILABLE_AGENTS, DEFAULT_AGENT } from "./constants/agents";
+import { AVAILABLE_AGENTS } from "./constants/agents";
 
 interface InspectorContainerProps {
   shadowRoot?: ShadowRoot;
@@ -185,8 +185,8 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({
     if (tooltipRef.current) tooltipRef.current.style.display = "none";
   };
 
-  const handleAgentSubmit = (query: string) => {
-    const currentAgent = AVAILABLE_AGENTS.find((a) => a.name === DEFAULT_AGENT) || AVAILABLE_AGENTS[0];
+  const handleAgentSubmit = (query: string, agentName: string) => {
+    const currentAgent = AVAILABLE_AGENTS.find((a) => a.name === agentName) || AVAILABLE_AGENTS[0];
     sendMessage(
       { text: query },
       {

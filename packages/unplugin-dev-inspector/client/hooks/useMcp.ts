@@ -337,14 +337,7 @@ export function useMcp() {
     ]);
 
     const transport = new SSEClientTransport(
-      new URL("/__mcp__/sse?sessionId=chrome", window.location.origin),
-      {
-        requestInit: {
-          headers: {
-            'mcp-session-id': 'chrome'
-          }
-        }
-      }
+      new URL("/__mcp__/sse?clientType=inspector", window.location.origin),
     );
 
     client
