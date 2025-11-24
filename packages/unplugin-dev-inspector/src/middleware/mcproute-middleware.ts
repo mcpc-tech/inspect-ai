@@ -11,10 +11,13 @@ import { createInspectorMcpServer, type ServerContext } from "../mcp";
  * Setup MCP server endpoints in Vite dev server
  */
 export async function setupMcpMiddleware(middlewares: Connect.Server, serverContext?: ServerContext) {
-  const transports: Record<
-    string,
-    StreamableHTTPServerTransport | SSEServerTransport
-  > = {};
+  const state = {
+    transports: {} as Record<
+      string,
+      StreamableHTTPServerTransport | SSEServerTransport
+    >,
+    latestInspectorSessionId: null as string | null,
+  };
 
   middlewares.use(
     async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
@@ -28,11 +31,11 @@ export async function setupMcpMiddleware(middlewares: Connect.Server, serverCont
         !url.startsWith("/__mcp__/messages")
       ) {
         if (req.method === "POST") {
-          await handleStreamableHttpPost(req, res, mcpServer, transports);
+          await handleStreamableHttpPost(req, res, mcpServer, state.transports);
         } else if (req.method === "GET") {
-          await handleStreamableHttpGet(req, res, transports);
+          await handleStreamableHttpGet(req, res, state.transports);
         } else if (req.method === "DELETE") {
-          await handleStreamableHttpDelete(req, res, transports);
+          await handleStreamableHttpDelete(req, res, state.transports);
         } else {
           res.writeHead(405).end("Method Not Allowed");
         }
@@ -41,13 +44,13 @@ export async function setupMcpMiddleware(middlewares: Connect.Server, serverCont
 
       // SSE endpoint (deprecated)
       if (url.startsWith("/__mcp__/sse") && req.method === "GET") {
-        await handleSseConnection(req, res, mcpServer, transports);
+        await handleSseConnection(req, res, mcpServer, state);
         return;
       }
 
       // SSE messages endpoint (deprecated)
       if (url.startsWith("/__mcp__/messages") && req.method === "POST") {
-        await handleSseMessage(req, res, transports);
+        await handleSseMessage(req, res, state.transports);
         return;
       }
 
@@ -194,14 +197,26 @@ async function handleSseConnection(
   req: IncomingMessage,
   res: ServerResponse,
   mcpServer: Server,
-  transports: Record<string, StreamableHTTPServerTransport | SSEServerTransport>
+  state: {
+    transports: Record<
+      string,
+      StreamableHTTPServerTransport | SSEServerTransport
+    >;
+    latestInspectorSessionId: string | null;
+  }
 ) {
+  const { transports } = state;
   try {
     const url = new URL(req.url ?? "", `http://${req.headers.host}`);
     const transport = new SSEServerTransport("/__mcp__/messages", res);
     const sessionId = transport.sessionId;
     const aliasSessionId = url.searchParams.get("sessionId") || sessionId;
     const puppetId = url.searchParams.get("puppetId");
+    const clientType = url.searchParams.get("clientType");
+
+    if (clientType === "inspector") {
+      state.latestInspectorSessionId = sessionId;
+    }
 
     const runningHostTransport = Object.values(transports).find(
       // @ts-expect-error - puppet transport marker
@@ -214,11 +229,23 @@ async function handleSseConnection(
     }
 
     if (puppetId) {
-      if (!transports[puppetId]) {
+      let targetTransport = transports[puppetId];
+
+      if (
+        !targetTransport &&
+        puppetId === "chrome" &&
+        state.latestInspectorSessionId
+      ) {
+        targetTransport = transports[state.latestInspectorSessionId];
+      }
+
+      if (!targetTransport) {
         // throw new Error(`Puppet ${puppetId} not found`);
       }
 
-      boundTransport = bindPuppet(transport, transports[puppetId]);
+      if (targetTransport) {
+        boundTransport = bindPuppet(transport, targetTransport);
+      }
       // @ts-expect-error - puppet transport marker
       transport.__puppetId = puppetId;
     }
