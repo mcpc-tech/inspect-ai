@@ -13,7 +13,7 @@ interface TransformOptions {
   id: string;
 }
 
-export async function compileVue({ code, id }: TransformOptions): Promise<{ code: string; map: any } | null> {
+export function compileVue({ code, id }: TransformOptions): { code: string; map: any } | null {
   const relativePath = normalizePath(path.relative(process.cwd(), id));
   
   const { descriptor } = parse(code, {
