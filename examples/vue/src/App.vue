@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import 'virtual:dev-inspector-mcp'
 import HelloWorld from './components/HelloWorld.vue'
 </script>
 

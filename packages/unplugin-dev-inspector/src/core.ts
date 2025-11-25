@@ -30,12 +30,28 @@ export interface DevInspectorOptions {
    * @default "Claude Code"
    */
   defaultAgent?: string;
+
+  /**
+   * Auto-inject inspector into HTML files
+   * Set to false for non-HTML projects (miniapps, library bundles)
+   * @default true
+   */
+  autoInject?: boolean;
+
+  /**
+   * Custom virtual module name
+   * Useful if the default name conflicts with your project
+   * @default "virtual:dev-inspector-mcp"
+   * @example "virtual:my-inspector" or "virtual:custom-mcp"
+   */
+  virtualModuleName?: string;
 }
 
 export const unplugin = createUnplugin<DevInspectorOptions | undefined>(
   (options = {}) => {
     const enabled = options.enabled ?? process.env.NODE_ENV !== "production";
     const enableMcp = options.enableMcp ?? true;
+    const virtualModuleName = options.virtualModuleName ?? 'virtual:dev-inspector-mcp';
 
     if (!enabled) {
       return {
@@ -47,6 +63,34 @@ export const unplugin = createUnplugin<DevInspectorOptions | undefined>(
       name: "unplugin-dev-inspector",
 
       enforce: "pre",
+
+      resolveId(id) {
+        if (id === virtualModuleName) {
+          return '\0' + virtualModuleName;
+        }
+      },
+
+      load(id) {
+        if (id === '\0' + virtualModuleName) {
+          // Return dev-only code that is tree-shaken in production
+          return `
+// Development-only code - completely removed in production builds
+if (import.meta.env.DEV) {
+  if (typeof document !== 'undefined') {
+    // Create inspector element
+    const inspector = document.createElement('dev-inspector-mcp');
+    document.body.appendChild(inspector);
+    
+    // Dynamically load inspector script (only in dev)
+    const script = document.createElement('script');
+    script.src = '/__inspector__/inspector.iife.js';
+    script.type = 'module';
+    document.head.appendChild(script);
+  }
+}
+`;
+        }
+      },
 
       async transform(code, id) {
         if (id.includes('node_modules')) return null;
@@ -77,10 +121,13 @@ export const unplugin = createUnplugin<DevInspectorOptions | undefined>(
         apply: "serve",
 
         transformIndexHtml(html) {
+          const autoInject = options.autoInject ?? true;
+          if (!autoInject) return html;
+
           // Inject inspector client script and element
           return html.replace(
             "</body>",
-            `<dev-inspector></dev-inspector><script src="/__inspector__/inspector.iife.js"></script></body>`
+            `<dev-inspector-mcp></dev-inspector-mcp><script src="/__inspector__/inspector.iife.js"></script></body>`
           );
         },
 

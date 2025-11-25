@@ -271,8 +271,8 @@ class DevInspector extends HTMLElement {
 export * from "./context/InspectorContainerContext";
 
 export function registerDevInspector() {
-  if (!customElements.get("dev-inspector")) {
-    customElements.define("dev-inspector", DevInspector as CustomElementConstructor);
+  if (!customElements.get("dev-inspector-mcp")) {
+    customElements.define("dev-inspector-mcp", DevInspector as CustomElementConstructor);
   }
 }
 

@@ -44,6 +44,43 @@ export default {
 
 Currently supports **Vite**. Webpack, Rollup, esbuild, and Rspack support coming soon.
 
+### For Non-HTML Projects (Miniapps, Library Bundles)
+
+If your project doesn't use HTML files (e.g., miniapp platforms that only bundle JS):
+
+```typescript
+// vite.config.ts
+DevInspector.vite({
+  enabled: true,
+  autoInject: false  // Disable HTML injection
+})
+```
+
+```typescript
+// main.ts or app entry point
+import 'virtual:dev-inspector-mcp';  // ← Add this import
+```
+
+**✅ Zero Production Impact:** This import is automatically removed in production builds via tree-shaking. The entire dev-inspector code is wrapped in `if (import.meta.env.DEV)` guards, which bundlers statically replace with `false` during production builds.
+
+#### Custom Virtual Module Name
+
+If `virtual:dev-inspector-mcp` conflicts with your project, you can customize it:
+
+```typescript
+// vite.config.ts
+DevInspector.vite({
+  enabled: true,
+  autoInject: false,
+  virtualModuleName: 'virtual:my-custom-inspector'  // ← Custom name
+})
+```
+
+```typescript
+// main.ts
+import 'virtual:my-custom-inspector';  // ← Use your custom name
+```
+
 ## Configuration
 
 ### Custom Agents

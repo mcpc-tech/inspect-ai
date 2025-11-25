@@ -1,12 +1,13 @@
 {
   "name": "@mcpc-tech/unplugin-dev-inspector-mcp",
-  "version": "0.0.2-beta.cool",
+  "version": "0.0.2-beta.7",
   "description": "Universal dev inspector plugin for React - inspect component sources and API calls in any bundler",
   "type": "module",
   "license": "MIT",
   "files": [
     "dist",
-    "client/dist"
+    "client/dist",
+    "client.d.ts"
   ],
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -16,6 +17,9 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./client": {
+      "types": "./client.d.ts"
     },
     "./package.json": "./package.json"
   },
@@ -50,7 +54,7 @@
   "dependencies": {
     "@agentclientprotocol/sdk": "^0.5.1",
     "@ai-sdk/react": "^2.0.95",
-    "@mcpc-tech/acp-ai-provider": "^0.1.21",
+    "@mcpc-tech/acp-ai-provider": "^0.1.23",
     "@mcpc-tech/cmcp": "^0.0.13-beta.2",
     "@mcpc-tech/core": "^0.3.8",
     "@modelcontextprotocol/sdk": "^1.20.1",

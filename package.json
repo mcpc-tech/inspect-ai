@@ -14,7 +14,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.14",
-    "@types/node": "^24.7.2",
+    "@types/node": "^24.10.1",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.0.4",
@@ -46,6 +46,11 @@
     },
     "vite": {
       "optional": false
+    }
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/node": "^24.10.1"
     }
   },
   "dependencies": {
