@@ -241,8 +241,8 @@ importers:
         specifier: ^2.0.95
         version: 2.0.95(react@19.2.0)(zod@3.25.76)
       '@mcpc-tech/acp-ai-provider':
-        specifier: ^0.1.21
-        version: 0.1.21
+        specifier: ^0.1.23
+        version: 0.1.23
       '@mcpc-tech/cmcp':
         specifier: ^0.0.13-beta.2
         version: 0.0.13-beta.2
@@ -897,8 +897,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@mcpc-tech/acp-ai-provider@0.1.21':
-    resolution: {integrity: sha512-g4wGcQKwP23ckNFnoRm/SMbZQA4NUmY7ESAZdYsMKBbV4emOu/JhhWzw07XfOSsbHThml1P0uAUeZEM7J2DWrA==}
+  '@mcpc-tech/acp-ai-provider@0.1.23':
+    resolution: {integrity: sha512-G4b6TCHHtK/ujS0lPSUy6vgH5BH2kZ9MlvR2O9s6ItHsHvassxCDHL8RaYjAVam1JxB4QL/4A9ZAiKUbXFVZCA==}
 
   '@mcpc-tech/cmcp@0.0.13-beta.2':
     resolution: {integrity: sha512-hgmkWd0x2+5Xv3GU0zcJHkMcrGcyKU6OFo9EuGHM+VghdD7YxervpkWNZD70ZPOiDpyNTv8Z2uvIpQSuwpWMbA==}
@@ -5704,7 +5704,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@mcpc-tech/acp-ai-provider@0.1.21':
+  '@mcpc-tech/acp-ai-provider@0.1.23':
     dependencies:
       '@agentclientprotocol/sdk': 0.4.9
       '@ai-sdk/provider': 2.0.0

@@ -50,7 +50,7 @@
   "dependencies": {
     "@agentclientprotocol/sdk": "^0.5.1",
     "@ai-sdk/react": "^2.0.95",
-    "@mcpc-tech/acp-ai-provider": "^0.1.21",
+    "@mcpc-tech/acp-ai-provider": "^0.1.23",
     "@mcpc-tech/cmcp": "^0.0.13-beta.2",
     "@mcpc-tech/core": "^0.3.8",
     "@modelcontextprotocol/sdk": "^1.20.1",

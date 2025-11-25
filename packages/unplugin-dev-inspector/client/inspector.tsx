@@ -17,8 +17,7 @@ import inspectorStyles from "./styles.css";
 import ReactDOM from "react-dom/client";
 import { InspectorThemeProvider } from "./context/ThemeContext";
 import { InspectorBar } from "./components/InspectorBar";
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import { usePersistentChat } from "./hooks/usePersistentChat";
 import { AVAILABLE_AGENTS } from "./constants/agents";
 
 interface InspectorContainerProps {
@@ -38,11 +37,9 @@ const InspectorContainer: React.FC<InspectorContainerProps> = ({
   const [bubbleMode, setBubbleMode] = useState<"input" | null>(null);
   const { inspections, setInspections } = useInspectionProgress();
 
-  // Agent State
-  const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/acp/chat",
-    }),
+  // Agent State with persistence
+  const { messages, sendMessage, status } = usePersistentChat({
+    api: "/api/acp/chat",
   });
 
   const overlayRef = useRef<HTMLDivElement>(null);
