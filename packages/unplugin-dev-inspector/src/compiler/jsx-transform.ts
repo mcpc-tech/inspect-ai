@@ -55,23 +55,13 @@ export async function transformJSX({ code, id }: TransformOptions): Promise<{ co
       const { line, column } = node.loc!.start;
       const sourceValue = `${relativePath}:${line}:${column}`;
 
-      // Find insertion position (after tag name, before first attribute or >)
-      let insertPos: number;
+      // Find the end of the tag name (handles Foo, Foo.Bar, Foo.Bar.Baz)
+      const nameNode = node.name;
+      const nameEnd = nameNode.end!;
       
-      if (node.attributes.length > 0) {
-        // Insert before first attribute
-        const firstAttr = node.attributes[0];
-        insertPos = firstAttr.start!;
-      } else {
-        // Insert before > or />
-        const tagName = (node.name as any).name || '';
-        const openingTagStart = node.start!;
-        const tagNameEnd = openingTagStart + tagName.length + 1; // +1 for <
-        insertPos = tagNameEnd;
-      }
-
-      // Inject data-source attribute
-      s.prependLeft(insertPos, ` ${DATA_SOURCE_ATTR}="${sourceValue}"`);
+      // Insert right after the tag name
+      const attr = ` ${DATA_SOURCE_ATTR}="${sourceValue}"`;
+      s.appendLeft(nameEnd, attr);
       hasModifications = true;
     },
   });
