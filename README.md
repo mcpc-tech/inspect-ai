@@ -33,14 +33,16 @@ import react from '@vitejs/plugin-react'; // or vue()
 
 export default {
   plugins: [
-    react(), // or vue()
     DevInspector.vite({
       enabled: true,
       enableMcp: true,
     }),
+    react(), // or vue()
   ],
 };
 ```
+
+> 💡 **Troubleshooting:** If source locations show `unknown:0:0`, try moving `DevInspector.vite()` **before** framework plugins like `react()`, `vue()`, or `preact()`. This ensures source location injection happens before JSX transformation.
 
 Currently supports **Vite**. Webpack, Rollup, esbuild, and Rspack support coming soon.
 
