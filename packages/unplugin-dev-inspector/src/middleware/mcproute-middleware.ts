@@ -3,7 +3,6 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import type { IncomingMessage, ServerResponse } from "http";
 import { randomUUID } from "crypto";
 import type { Connect } from "vite";
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { createInspectorMcpServer, type ServerContext } from "../mcp";
 import { ConnectionManager } from "./connection-manager.js";
 
@@ -16,7 +15,6 @@ export async function setupMcpMiddleware(middlewares: Connect.Server, serverCont
   middlewares.use(
     async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
       const url = req.url || "";
-      const mcpServer = await createInspectorMcpServer(serverContext);
 
       // Streamable HTTP endpoint
       if (
@@ -25,7 +23,7 @@ export async function setupMcpMiddleware(middlewares: Connect.Server, serverCont
         !url.startsWith("/__mcp__/messages")
       ) {
         if (req.method === "POST") {
-          await handleStreamableHttpPost(req, res, mcpServer, connectionManager);
+          await handleStreamableHttpPost(req, res, serverContext, connectionManager);
         } else if (req.method === "GET") {
           await handleStreamableHttpGet(req, res, connectionManager);
         } else if (req.method === "DELETE") {
@@ -38,7 +36,7 @@ export async function setupMcpMiddleware(middlewares: Connect.Server, serverCont
 
       // SSE endpoint (deprecated)
       if (url.startsWith("/__mcp__/sse") && req.method === "GET") {
-        await handleSseConnection(req, res, mcpServer, connectionManager);
+        await handleSseConnection(req, res, serverContext, connectionManager);
         return;
       }
 
@@ -59,7 +57,7 @@ export async function setupMcpMiddleware(middlewares: Connect.Server, serverCont
 async function handleStreamableHttpPost(
   req: IncomingMessage,
   res: ServerResponse,
-  mcpServer: Server,
+  serverContext: ServerContext | undefined,
   connectionManager: ConnectionManager
 ) {
   try {
@@ -89,7 +87,8 @@ async function handleStreamableHttpPost(
         return;
       }
     } else if (!sessionId && isInitializeRequest(parsedBody)) {
-      // New session
+      // New session - only create MCP server here
+      const mcpServer = await createInspectorMcpServer(serverContext);
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         onsessioninitialized: (sid) => {
@@ -199,10 +198,12 @@ async function handleStreamableHttpDelete(
 async function handleSseConnection(
   req: IncomingMessage,
   res: ServerResponse,
-  mcpServer: Server,
+  serverContext: ServerContext | undefined,
   connectionManager: ConnectionManager
 ) {
   try {
+    // Create MCP server for this SSE connection
+    const mcpServer = await createInspectorMcpServer(serverContext);
     const url = new URL(req.url ?? "", `http://${req.headers.host}`);
     const transport = new SSEServerTransport("/__mcp__/messages", res);
     const sessionId = transport.sessionId;
@@ -220,7 +221,7 @@ async function handleSseConnection(
     }
 
     if (puppetId) {
-      const result = connectionManager.handleWatcherConnection(sessionId, puppetId, transport);
+      connectionManager.handleWatcherConnection(sessionId, puppetId, transport);
       // @ts-expect-error - puppet transport marker
       transport.__puppetId = puppetId;
     }
