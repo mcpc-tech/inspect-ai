@@ -72,7 +72,7 @@ export const AVAILABLE_AGENTS: Agent[] = [
     },
   },
   {
-    name: "CodeBuddy",
+    name: "CodeBuddy Code",
     command: "npx",
     args: ["-y", "@tencent-ai/codebuddy-code", "--acp"],
     env: [

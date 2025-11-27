@@ -59,7 +59,14 @@ function getInspectorCSS(): string | null {
 }
 
 export interface InspectorConfig {
+  /**
+   * @see AVAILABLE_AGENTS https://github.com/mcpc-tech/dev-inspector-mcp/blob/main/packages/unplugin-dev-inspector/client/constants/agents.ts
+   */
   agents?: Agent[];
+  /**
+   * @default "Claude Code"
+   * @see AVAILABLE_AGENTS https://github.com/mcpc-tech/dev-inspector-mcp/blob/main/packages/unplugin-dev-inspector/client/constants/agents.ts
+   */
   defaultAgent?: string;
 }
 
