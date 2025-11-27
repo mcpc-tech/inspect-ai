@@ -2,10 +2,17 @@ import { defineConfig } from "tsdown";
 
 export default defineConfig({
   entry: ["src/index.ts"],
-  format: ["esm"],  // ESM only - dependencies use import.meta which breaks CJS
+  format: ["esm", "cjs"],
   clean: true,
   dts: true,
   hash: false,
+  shims: true,  // Add shims for import.meta.url in CJS
+  // Bundle ESM-only packages for CJS compatibility
+  noExternal: [
+    "@mcpc-tech/cmcp",
+    "@mcpc-tech/core",
+    "@mcpc-tech/acp-ai-provider",
+  ],
   external: [
     // Bundler integrations - provided by user's project
     "vite",
@@ -28,12 +35,9 @@ export default defineConfig({
     "react",
     "react-dom",
     "vue",
-    // All runtime dependencies - keep external
+    // Runtime dependencies that support CJS
     "@modelcontextprotocol/sdk",
     "@agentclientprotocol/sdk",
-    "@mcpc-tech/cmcp",
-    "@mcpc-tech/core",
-    "@mcpc-tech/acp-ai-provider",
     "chrome-devtools-mcp",
     "mcp-remote",
     "ai",

@@ -9,6 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import { PROMPT_SCHEMAS } from "./prompt-schemas.js";
 import { TOOL_SCHEMAS } from "./tool-schemas.js";
 
@@ -16,12 +17,10 @@ import { TOOL_SCHEMAS } from "./tool-schemas.js";
  * Get Chrome DevTools binary path from npm package, then use node to run it, faster/stabler than npx
  */
 function getChromeDevToolsBinPath(): string {
-  const resolver = (import.meta as { resolve?: (specifier: string) => string })
-    .resolve;
-  if (!resolver) throw new Error("Cannot resolve chrome-devtools-mcp package");
-
-  const pkgUrl = resolver("chrome-devtools-mcp/package.json");
-  const chromeDevTools = path.dirname(fileURLToPath(pkgUrl));
+  // Use createRequire for CJS compatibility (import.meta.resolve is ESM-only)
+  const require = createRequire(import.meta.url);
+  const chromeDevToolsPkgPath = require.resolve("chrome-devtools-mcp/package.json");
+  const chromeDevTools = path.dirname(chromeDevToolsPkgPath);
   return path.join(chromeDevTools, "./build/src/index.js");
 }
 

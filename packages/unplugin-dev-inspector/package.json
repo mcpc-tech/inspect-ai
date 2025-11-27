@@ -1,6 +1,6 @@
 {
   "name": "@mcpc-tech/unplugin-dev-inspector-mcp",
-  "version": "0.0.2-beta.20",
+  "version": "0.0.2-beta.21",
   "description": "Universal dev inspector plugin for React/Vue - inspect component sources and API calls in any bundler",
   "type": "module",
   "license": "MIT",
@@ -9,13 +9,19 @@
     "client/dist",
     "client.d.ts"
   ],
-  "main": "./dist/index.js",
+  "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./client": {
       "types": "./client.d.ts"
