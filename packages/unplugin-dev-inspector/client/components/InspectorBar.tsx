@@ -478,7 +478,7 @@ export const InspectorBar = ({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask AI to check something..."
+              placeholder={`Ask ${selectedAgent}...`}
               className="w-full bg-transparent border-none outline-none text-foreground placeholder-muted-foreground text-sm h-7"
               tabIndex={0}
             />
