@@ -82,6 +82,8 @@ export const AVAILABLE_AGENTS: Agent[] = [
     meta: {
       icon: svgToDataUri(AGENT_ICONS.codebuddy),
     },
+    // Delay to ensure mcp server is ready
+    acpDelay: 2000,
   },
 ];
 

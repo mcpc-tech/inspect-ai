@@ -6,8 +6,11 @@ import { planEntrySchema } from "@agentclientprotocol/sdk";
 import { z } from "zod";
 import { resolveMcpRemote } from "../utils/resolve-bin";
 import type { ServerContext } from "../mcp";
+import type { AcpOptions } from "../../client/constants/types";
 
-export function setupAcpMiddleware(middlewares: Connect.Server, serverContext?: ServerContext) {
+export type { AcpOptions };
+
+export function setupAcpMiddleware(middlewares: Connect.Server, serverContext?: ServerContext, acpOptions?: AcpOptions) {
   middlewares.use(
     "/api/acp/chat",
     async (req: IncomingMessage, res: ServerResponse) => {
@@ -46,6 +49,37 @@ export function setupAcpMiddleware(middlewares: Connect.Server, serverContext?: 
           },
           authMethodId: agent.authMethodId,
         });
+
+        const sessionInfo = await provider.initSession();
+        
+        // Log available modes and models from session info
+        console.log('[dev-inspector] [acp] Session initialized');
+        if (sessionInfo.modes) {
+          const { availableModes, currentModeId } = sessionInfo.modes;
+          console.log('[dev-inspector] [acp] Available modes:', availableModes.map(m => m.id).join(', '));
+          console.log('[dev-inspector] [acp] Current mode:', currentModeId);
+        }
+        if (sessionInfo.models) {
+          const { availableModels, currentModelId } = sessionInfo.models;
+          console.log('[dev-inspector] [acp] Available models:', availableModels.map(m => m.modelId).join(', '));
+          console.log('[dev-inspector] [acp] Current model:', currentModelId);
+        }
+        
+        // Only set mode/model/delay if options are explicitly specified
+        // Agent-specific options take precedence over global options
+        const mode = agent.acpMode ?? acpOptions?.acpMode;
+        const model = agent.acpModel ?? acpOptions?.acpModel;
+        const delay = agent.acpDelay ?? acpOptions?.acpDelay;
+        
+        if (mode !== undefined) {
+          await provider.setMode(mode);
+        }
+        if (model !== undefined) {
+          await provider.setModel(model);
+        }
+        if (delay !== undefined && delay > 0) {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        } 
 
         const result = streamText({
           model: provider.languageModel(),

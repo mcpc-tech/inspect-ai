@@ -9,6 +9,7 @@ import { MessageDetail } from './MessageDetail';
 import { useTextBuffer } from '../hooks/useTextBuffer';
 import { AVAILABLE_AGENTS, DEFAULT_AGENT } from '../constants/agents';
 import { useDraggable } from '../hooks/useDraggable';
+import { useAgent } from '../hooks/useAgent';
 interface InspectorBarProps {
   isActive: boolean;
   onToggleInspector: () => void;
@@ -39,7 +40,7 @@ export const InspectorBar = ({
   const [hideInputDuringWork, setHideInputDuringWork] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [allowHover, setAllowHover] = useState(true);
-  const [selectedAgent, setSelectedAgent] = useState(DEFAULT_AGENT);
+  const { agent: selectedAgent, setAgent: setSelectedAgent } = useAgent(DEFAULT_AGENT);
   const [isAgentSelectorOpen, setIsAgentSelectorOpen] = useState(false);
 
   // Get current agent info

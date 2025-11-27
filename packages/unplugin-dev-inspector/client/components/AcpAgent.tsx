@@ -41,7 +41,7 @@ const ACPAgent = ({ sourceInfo, onClose }: ACPAgentProps = {}) => {
   const [input, setInput] = useState("");
   const { agent: selectedAgent, setAgent: setSelectedAgent } = useAgent(DEFAULT_AGENT);
 
-  const currentAgent = AVAILABLE_AGENTS.find((agent) => agent.command === selectedAgent) || AVAILABLE_AGENTS[0];
+  const currentAgent = AVAILABLE_AGENTS.find((agent) => agent.name === selectedAgent) || AVAILABLE_AGENTS[0];
   const requiredKeys = currentAgent.env.filter((e) => e.key && e.required).map((e) => e.key);
   const { envVars, setEnvVar } = useAgentEnv(currentAgent.command, requiredKeys);
 

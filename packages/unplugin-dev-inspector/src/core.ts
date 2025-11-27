@@ -5,9 +5,9 @@ import { setupAcpMiddleware } from "./middleware/acp-middleware";
 import { transformJSX } from "./compiler/jsx-transform";
 import { compileVue } from "./compiler/vue-transform";
 import { updateMcpConfigs, type McpConfigOptions } from "./utils/config-updater";
-import type { Agent } from "../client/constants/types";
+import type { Agent, AcpOptions } from "../client/constants/types";
 
-export interface DevInspectorOptions extends McpConfigOptions {
+export interface DevInspectorOptions extends McpConfigOptions, AcpOptions {
   /**
    * Enable/disable the plugin
    * @default true in development, false in production
@@ -147,7 +147,11 @@ if (import.meta.env.DEV) {
             console.log(`[dev-inspector] 📡 MCP: ${sseUrl}\n`);
 
             await setupMcpMiddleware(server.middlewares, serverContext);
-            setupAcpMiddleware(server.middlewares, serverContext);
+            setupAcpMiddleware(server.middlewares, serverContext, {
+              acpMode: options.acpMode,
+              acpModel: options.acpModel,
+              acpDelay: options.acpDelay,
+            });
 
             // Auto-update MCP configs for detected editors
             const root = server.config.root;
