@@ -10,7 +10,7 @@ import type { Agent, AcpOptions } from "../client/constants/types";
 export interface DevInspectorOptions extends McpConfigOptions, AcpOptions {
   /**
    * Enable/disable the plugin
-   * @default true in development, false in production
+   * @default true (automatically disabled in production)
    */
   enabled?: boolean;
 
@@ -23,12 +23,14 @@ export interface DevInspectorOptions extends McpConfigOptions, AcpOptions {
   /**
    * Custom agents configuration
    * If provided, these will be merged with or replace the default agents
+   * @see AVAILABLE_AGENTS https://github.com/mcpc-tech/dev-inspector-mcp/blob/main/packages/unplugin-dev-inspector/client/constants/agents.ts
    */
   agents?: Agent[];
 
   /**
    * Default agent name to use
    * @default "Claude Code"
+   * @see https://github.com/mcpc-tech/dev-inspector-mcp/blob/main/packages/unplugin-dev-inspector/client/constants/agents.ts
    */
   defaultAgent?: string;
 
