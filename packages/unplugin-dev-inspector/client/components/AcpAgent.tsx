@@ -114,7 +114,16 @@ const ACPAgent = ({ sourceInfo, onClose }: ACPAgentProps = {}) => {
                 )}
               </Message>
             ))}
-            {status === "submitted" && <Loader />}
+            {status === "submitted" && (
+              <div className="flex flex-col items-center gap-2 py-4">
+                <Loader />
+                {currentAgent.command === "npx" && (
+                  <span className="text-xs text-muted-foreground animate-pulse">
+                    Starting {currentAgent.name}... This may take a moment on first run.
+                  </span>
+                )}
+              </div>
+            )}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>

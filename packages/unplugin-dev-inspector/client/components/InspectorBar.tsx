@@ -42,6 +42,9 @@ export const InspectorBar = ({
   const [selectedAgent, setSelectedAgent] = useState(DEFAULT_AGENT);
   const [isAgentSelectorOpen, setIsAgentSelectorOpen] = useState(false);
 
+  // Get current agent info
+  const currentAgent = AVAILABLE_AGENTS.find((a) => a.name === selectedAgent) || AVAILABLE_AGENTS[0];
+
   // Use custom draggable hook
   const { elementRef: containerRef, isDragging, handleMouseDown } = useDraggable();
 
@@ -365,7 +368,9 @@ export const InspectorBar = ({
                     <div className="text-sm font-medium leading-[1.4] text-foreground truncate min-w-0">
                       {isAgentWorking && !visibleFragment ? (
                         <Shimmer duration={2} spread={2}>
-                          Thinking...
+                          {status === 'submitted' && currentAgent?.command === 'npx'
+                            ? `Starting ${currentAgent.name}... This may take a moment.`
+                            : 'Thinking...'}
                         </Shimmer>
                       ) : (
                         visibleFragment || 'Processing...'

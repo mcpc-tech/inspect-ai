@@ -71,6 +71,18 @@ export const AVAILABLE_AGENTS: Agent[] = [
       icon: svgToDataUri(AGENT_ICONS.cursor),
     },
   },
+  {
+    name: "CodeBuddy",
+    command: "npx",
+    args: ["-y", "@tencent-ai/codebuddy-code", "--acp"],
+    env: [
+      { key: "CODEBUDDY_API_KEY", required: false },
+      { key: "CODEBUDDY_INTERNET_ENVIRONMENT", required: false },
+    ],
+    meta: {
+      icon: svgToDataUri(AGENT_ICONS.codebuddy),
+    },
+  },
 ];
 
 export const DEFAULT_AGENT = "Claude Code";
