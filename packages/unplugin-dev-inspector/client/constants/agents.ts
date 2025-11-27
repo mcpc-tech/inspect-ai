@@ -1,16 +1,7 @@
-export interface Agent {
-  name: string;
-  command: string;
-  args?: string[];
-  env: Array<{
-    key: string;
-    required: boolean;
-  }>;
-  authMethodId?: string;
-  meta?: {
-    icon?: string;
-  };
-}
+import { AGENT_ICONS, svgToDataUri } from "./icons";
+import type { Agent } from "./types";
+
+export type { Agent };
 
 export const AVAILABLE_AGENTS: Agent[] = [
   {
@@ -22,7 +13,7 @@ export const AVAILABLE_AGENTS: Agent[] = [
       { key: "ANTHROPIC_BASE_URL", required: false },
     ],
     meta: {
-      icon: "https://unpkg.com/@lobehub/icons-static-svg@1.73.0/icons/claude-color.svg",
+      icon: svgToDataUri(AGENT_ICONS.claude),
     },
   },
   {
@@ -31,7 +22,7 @@ export const AVAILABLE_AGENTS: Agent[] = [
     args: ["-y", "@zed-industries/codex-acp"],
     env: [{ key: "AI_GATEWAY_API_KEY", required: false }],
     meta: {
-      icon: "https://unpkg.com/@lobehub/icons-static-svg@1.73.0/icons/openai.svg",
+      icon: svgToDataUri(AGENT_ICONS.openai),
     },
   },
   {
@@ -41,7 +32,7 @@ export const AVAILABLE_AGENTS: Agent[] = [
     env: [{ key: "GEMINI_API_KEY", required: false }],
     authMethodId: "gemini-api-key",
     meta: {
-      icon: "https://unpkg.com/@lobehub/icons-static-svg@1.73.0/icons/gemini-color.svg",
+      icon: svgToDataUri(AGENT_ICONS.gemini),
     },
   },
   {
@@ -50,7 +41,7 @@ export const AVAILABLE_AGENTS: Agent[] = [
     args: ["--acp"],
     env: [],
     meta: {
-      icon: "https://unpkg.com/@lobehub/icons-static-svg@1.73.0/icons/moonshot.svg",
+      icon: svgToDataUri(AGENT_ICONS.moonshot),
     },
   },
   {
@@ -59,7 +50,7 @@ export const AVAILABLE_AGENTS: Agent[] = [
     args: ["acp"],
     env: [],
     meta: {
-      icon: "https://unpkg.com/@lobehub/icons-static-svg@1.73.0/icons/goose.svg",
+      icon: svgToDataUri(AGENT_ICONS.goose),
     },
   },
   {
@@ -68,7 +59,7 @@ export const AVAILABLE_AGENTS: Agent[] = [
     args: ["-y", "opencode-ai", "acp"],
     env: [],
     meta: {
-      icon: "https://avatars.githubusercontent.com/u/66570915?s=48&v=4",
+      icon: AGENT_ICONS.opencode, // PNG already a data URI
     },
   },
   {
@@ -77,7 +68,7 @@ export const AVAILABLE_AGENTS: Agent[] = [
     args: ["cursor-agent-acp"],
     env: [],
     meta: {
-      icon: "https://unpkg.com/@lobehub/icons-static-svg@1.73.0/icons/cursor.svg",
+      icon: svgToDataUri(AGENT_ICONS.cursor),
     },
   },
 ];

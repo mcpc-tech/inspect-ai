@@ -5,7 +5,7 @@ import { setupAcpMiddleware } from "./middleware/acp-middleware";
 import { transformJSX } from "./compiler/jsx-transform";
 import { compileVue } from "./compiler/vue-transform";
 import { updateMcpConfigs, type McpConfigOptions } from "./utils/config-updater";
-import type { Agent } from "../client/constants/agents";
+import type { Agent } from "../client/constants/types";
 
 export interface DevInspectorOptions extends McpConfigOptions {
   /**

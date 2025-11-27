@@ -36,10 +36,38 @@ export default defineConfig({
       },
     },
     {
+      name: "asset-inline-handler",
+      enforce: "pre",
+      resolveId(id, importer) {
+        // Handle ?raw (SVG) and ?png imports
+        const match = id.match(/\?(raw|png)$/);
+        if (!match) return null;
+        
+        const suffix = match[0];
+        const cleanId = id.replace(suffix, "");
+        const importerDir = importer 
+          ? path.dirname(importer.replace(/\?.*$/, ""))
+          : process.cwd();
+        const resolved = path.resolve(importerDir, cleanId);
+        return { id: resolved + suffix, moduleSideEffects: false };
+      },
+      load(id) {
+        if (id.endsWith("?raw")) {
+          const content = fs.readFileSync(id.replace("?raw", ""), "utf-8");
+          return `export default ${JSON.stringify(content)}`;
+        }
+        if (id.endsWith("?png")) {
+          const content = fs.readFileSync(id.replace("?png", ""));
+          return `export default "data:image/png;base64,${content.toString("base64")}"`;
+        }
+        return null;
+      },
+    },
+    {
       name: "asset-handler",
       resolveId(id) {
-        // Handle binary assets (fonts, images, etc.)
-        if (/\.(ttf|woff|woff2|eot|otf|png|jpg|jpeg|gif|svg)$/.test(id)) {
+        // Handle binary assets (fonts, images, etc.) - externalize
+        if (/\.(ttf|woff|woff2|eot|otf|png|jpg|jpeg|gif)$/.test(id)) {
           return { id, external: true };
         }
         return null;
