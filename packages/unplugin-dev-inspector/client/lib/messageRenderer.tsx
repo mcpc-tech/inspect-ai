@@ -149,10 +149,16 @@ export function renderMessagePart(
       | "output-error";
     const hasOutput =
       toolState === "output-available" || toolState === "output-error";
+    
+    // Truncate tool title if too long
+    const maxTitleLength = 20;
+    const displayTitle = toolType.length > maxTitleLength 
+      ? `${toolType.slice(0, maxTitleLength)}...` 
+      : toolType;
       
     return (
       <Tool key={`${messageId}-${index}`} defaultOpen={hasOutput}>
-        <ToolHeader title={toolType} type={toolType} state={toolState} />
+        <ToolHeader title={displayTitle} type={toolType} state={toolState} />
         <ToolContent>
           {part.input !== undefined && <ToolInput input={toolInput} />}
           {hasOutput && (

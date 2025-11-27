@@ -347,7 +347,7 @@ export const InspectorBar = ({
               </div>
 
               {/* Centered text content */}
-              <div className="flex-1 flex justify-center min-w-0">
+              <div className="flex-1 flex justify-center min-w-0 pl-2">
                 <div className="flex flex-col min-w-0 max-w-full pr-2 max-h-[24px] overflow-hidden">
                   {inspectionStatus && inspectionStatus.status === 'in-progress' && inspectionStatus.currentStep ? (
                     <div className="flex items-center gap-1.5 text-sm font-medium text-foreground min-w-0">

@@ -4,5 +4,9 @@ import DevInspector from "@mcpc-tech/unplugin-dev-inspector-mcp";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [DevInspector.vite(), preact()],
+  plugins: [DevInspector.vite(
+    {
+      defaultAgent: "CodeBuddy",
+    }
+  ), preact()],
 });
