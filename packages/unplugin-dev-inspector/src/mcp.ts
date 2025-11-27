@@ -106,7 +106,40 @@ Default dev server URL: http://${serverContext?.host || 'localhost'}:${serverCon
 
 You MUST ask the user for confirmation before navigating to any URL.`,
         options: {
-          refs: ['<tool name="chrome.__ALL__"/>'],
+          refs: [
+            // Page navigation and management
+            '<tool name="chrome.navigate_page"/>',
+            '<tool name="chrome.list_pages"/>',
+            '<tool name="chrome.select_page"/>',
+            '<tool name="chrome.close_page"/>',
+            '<tool name="chrome.new_page"/>',
+            // Element interaction
+            '<tool name="chrome.click"/>',
+            '<tool name="chrome.hover"/>',
+            '<tool name="chrome.fill"/>',
+            '<tool name="chrome.fill_form"/>',
+            '<tool name="chrome.press_key"/>',
+            '<tool name="chrome.drag"/>',
+            '<tool name="chrome.wait_for"/>',
+            // Debugging and inspection
+            '<tool name="chrome.evaluate_script"/>',
+            '<tool name="chrome.take_screenshot"/>',
+            '<tool name="chrome.take_snapshot"/>',
+            // Network inspection
+            '<tool name="chrome.list_network_requests"/>',
+            '<tool name="chrome.get_network_request"/>',
+            // Console inspection
+            '<tool name="chrome.list_console_messages"/>',
+            '<tool name="chrome.get_console_message"/>',
+            // Performance analysis
+            '<tool name="chrome.performance_start_trace"/>',
+            '<tool name="chrome.performance_stop_trace"/>',
+            '<tool name="chrome.performance_analyze_insight"/>',
+            // Dialogs and page settings
+            '<tool name="chrome.handle_dialog"/>',
+            '<tool name="chrome.resize_page"/>',
+            '<tool name="chrome.emulate"/>',
+          ],
         },
         deps: {
           mcpServers: {

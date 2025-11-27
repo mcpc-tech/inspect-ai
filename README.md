@@ -85,6 +85,46 @@ import 'virtual:my-custom-inspector';  // ← Use your custom name
 
 ## Configuration
 
+### Auto-Update MCP Config
+
+The plugin automatically updates MCP configuration files for detected editors when the dev server starts. This saves you from manually configuring MCP endpoints.
+
+**Supported editors:** Cursor, VSCode, Windsurf, Claude Code
+
+```typescript
+// vite.config.ts
+DevInspector.vite({
+  // Auto-detect and update (default: true)
+  updateConfig: true,
+  
+  // Or specify editors manually
+  updateConfig: ['cursor', 'vscode'],
+  
+  // Or disable
+  updateConfig: false,
+  
+  // Server name in MCP config (default: 'dev-inspector')
+  updateConfigServerName: 'my-app-inspector',
+})
+```
+
+**Custom editors:** For non-standard editors, use `customEditors`:
+
+```typescript
+DevInspector.vite({
+  customEditors: [
+    {
+      id: 'my-editor',
+      name: 'My Editor',
+      configPath: '~/.my-editor',        // absolute, ~/relative, or project-relative
+      configFileName: 'mcp.json',
+      serverUrlKey: 'url',               // default: 'url'
+      configFormat: 'mcpServers',        // 'mcpServers' or 'servers' (vscode-style)
+    },
+  ],
+})
+```
+
 ### Custom Agents
 
 This plugin uses the [Agent Client Protocol (ACP)](https://agentclientprotocol.com) to connect with AI agents. 

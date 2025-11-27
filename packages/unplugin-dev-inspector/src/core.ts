@@ -4,9 +4,10 @@ import { setupInspectorMiddleware } from "./middleware/inspector-middleware";
 import { setupAcpMiddleware } from "./middleware/acp-middleware";
 import { transformJSX } from "./compiler/jsx-transform";
 import { compileVue } from "./compiler/vue-transform";
+import { updateMcpConfigs, type McpConfigOptions } from "./utils/config-updater";
 import type { Agent } from "../client/constants/agents";
 
-export interface DevInspectorOptions {
+export interface DevInspectorOptions extends McpConfigOptions {
   /**
    * Enable/disable the plugin
    * @default true in development, false in production
@@ -132,8 +133,6 @@ if (import.meta.env.DEV) {
         },
 
         async configureServer(server) {
-          console.log("\n✨ Dev Inspector Plugin enabled!");
-
           if (enableMcp) {
             const host = server.config.server.host;
             const serverContext = {
@@ -144,10 +143,20 @@ if (import.meta.env.DEV) {
 
             // Display MCP connection instructions
             const displayHost = serverContext.host === '0.0.0.0' ? 'localhost' : serverContext.host;
-            console.log(`📡 MCP: http://${displayHost}:${serverContext.port}/__mcp__/sse?puppetId=chrome\n`);
+            const sseUrl = `http://${displayHost}:${serverContext.port}/__mcp__/sse?puppetId=chrome`;
+            console.log(`[dev-inspector] 📡 MCP: ${sseUrl}\n`);
 
             await setupMcpMiddleware(server.middlewares, serverContext);
             setupAcpMiddleware(server.middlewares, serverContext);
+
+            // Auto-update MCP configs for detected editors
+            const root = server.config.root;
+            await updateMcpConfigs(root, sseUrl, {
+              updateConfig: options.updateConfig,
+              updateConfigServerName: options.updateConfigServerName,
+              updateConfigAdditionalServers: options.updateConfigAdditionalServers,
+              customEditors: options.customEditors,
+            });
           }
           setupInspectorMiddleware(server.middlewares, {
             agents: options.agents,
