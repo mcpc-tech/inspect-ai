@@ -1,13 +1,6 @@
 import { useState } from "react";
 import { Client } from "@gradio/client";
 
-// ============================================
-// 🐛 THREE BUGS FOR DEMO:
-// 1. NaN Bug: API returns formatted duration, Number() fails
-// 2. Click Bug: Button has pointer-events: none
-// 3. z-index Bug: Result panel hidden behind overlay
-// ============================================
-
 interface SpaceInfo {
   name: string;
   endpoints: number;
@@ -159,9 +152,8 @@ export default function App() {
     }
   };
 
-  // Fixed: Remove commas before parsing to handle formatted durations like "1,234ms"
   const totalDuration = results.reduce((sum, r) => {
-    const numStr = r.duration.replace("ms", "").replace(/,/g, "");
+    const numStr = r.duration.replace("ms", "");
     return sum + Number(numStr);
   }, 0);
   const avgDuration = results.length > 0 ? totalDuration / results.length : 0;
@@ -248,7 +240,6 @@ export default function App() {
                 />
               </div>
 
-              {/* Fixed: Removed blocking overlay and restored button pointer events */}
               <button
                 onClick={runPredict}
                 disabled={loading || !selectedEndpoint}
@@ -264,9 +255,7 @@ export default function App() {
               )}
             </div>
 
-            {/* Right: Results Panel */}
             <div className="relative">
-              {/* Fixed: Removed blocking overlay to allow text selection and copying */}
               <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-6 relative h-full">
                 <h3 className="font-medium text-zinc-900 dark:text-white mb-4">
                   Results
