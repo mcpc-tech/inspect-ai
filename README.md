@@ -20,6 +20,17 @@ Click any UI element to let AI diagnose issues, inspect source code, analyze net
 
 ![Demo: MCP-powered visual debugging in action](https://media.giphy.com/media/sGCk7b783GiGm5vZGl/giphy.gif)
 
+## Key Features
+
+### 🎯 Visual Context
+Click any element to instantly send its source code location, computed styles, and DOM hierarchy to AI. No more explaining "it's the blue button in the header".
+
+### 🛠️ Full DevTools Access
+AI can access Chrome DevTools to analyze network requests, console logs, and performance metrics. It sees what you see.
+
+### 🤖 Multi-Agent Workflow
+Switch between agents (Claude Code, Goose) and track their debugging progress visually with step-by-step status updates.
+
 ## Quick Start
 
 ```bash
